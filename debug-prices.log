@@ -1,0 +1,33 @@
+hello
+ADD_PRICE payload: {"product_id":36,"store_id":1,"price":2800}
+CHECK_ALERTS product=36, store=1, priceNum=2800
+ADD_PRICE payload: {"product_id":36,"store_id":2,"price":2700}
+CHECK_ALERTS product=36, store=2, priceNum=2700
+ADD_PRICE payload: {"price":2600,"product_id":36,"store_id":2}
+CHECK_ALERTS product=36, store=2, priceNum=2600
+FOUND_ALERTS 1 for product 36 minPrice=2600
+TRIGGER_ALERT id=4 user=2 target=3000
+ADD_PRICE payload: {"product_id":29,"store_id":"1","price":1300}
+CHECK_ALERTS product=29, store=1, priceNum=1300
+FOUND_ALERTS 1 for product 29 minPrice=1300
+TRIGGER_ALERT id=3 user=1 target=1350
+ADD_PRICE payload: {"product_id":29,"store_id":"1","price":1100}
+CHECK_ALERTS product=29, store=1, priceNum=1100
+FOUND_ALERTS 1 for product 29 minPrice=1100
+TRIGGER_ALERT id=5 user=1 target=1200
+ADD_PRICE payload: {"product_id":29,"store_id":"1","price":900}
+CHECK_ALERTS product=29, store=1, priceNum=900
+FOUND_ALERTS 1 for product 29 minPrice=900
+TRIGGER_ALERT id=6 user=1 target=900
+ADD_PRICE payload: {"product_id":36,"store_id":1,"price":2700}
+CHECK_ALERTS product=36, store=1, priceNum=2700
+FOUND_ALERTS 0 for product 36 minPrice=2600
+ADD_PRICE payload: {"product_id":36,"store_id":1,"price":2500}
+CHECK_ALERTS product=36, store=1, priceNum=2500
+FOUND_ALERTS 0 for product 36 minPrice=2500
+ADD_PRICE payload: {"product_id":29,"store_id":"1","price":898}
+CHECK_ALERTS product=29, store=1, priceNum=898
+FOUND_ALERTS 0 for product 29 minPrice=898
+ADD_PRICE payload: {"product_id":29,"store_id":"1","price":1900}
+CHECK_ALERTS product=29, store=1, priceNum=1900
+FOUND_ALERTS 0 for product 29 minPrice=1900

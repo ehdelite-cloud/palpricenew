@@ -16,12 +16,12 @@ if(!token){
   useEffect(()=>{
 
     // جلب المنتجات
-    fetch("http://localhost:3000/products")
+    fetch("/api/products")
       .then(res=>res.json())
       .then(data=>setProducts(data));
 
     // جلب أسعار المتجر
-    fetch(`http://localhost:3000/prices/store/${storeId}`)
+    fetch(`/api/prices/store/${storeId}`)
       .then(res=>res.json())
       .then(data=>setMyPrices(data));
 
@@ -30,7 +30,7 @@ if(!token){
 
   const addPrice = () => {
 
-    fetch("http://localhost:3000/prices",{
+    fetch("/api/prices",{
       method:"POST",
       headers:{
         "Content-Type":"application/json"

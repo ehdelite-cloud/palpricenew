@@ -4,6 +4,8 @@ const pool = require("../db/db");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
+
+
 /*
 ==============================
 REGISTER STORE
@@ -57,6 +59,14 @@ if(store.rows.length === 0){
 return res.status(404).send("Store not found");
 }
 
+// تحقق من تعليق المتجر
+if(store.rows[0].is_active === false){
+return res.status(403).json({
+  error: "suspended",
+  message: "متجرك معلق حالياً. تواصل مع إدارة PalPrice."
+});
+}
+
 const valid = await bcrypt.compare(
 password,
 store.rows[0].password
@@ -68,7 +78,7 @@ return res.status(401).send("Wrong password");
 
 const token = jwt.sign(
 { id: store.rows[0].id },
-"secretkey",
+process.env.JWT_SECRET || "secretkey",
 { expiresIn:"7d" }
 );
 
@@ -122,7 +132,7 @@ try{
 const { id } = req.params;
 
 const result = await pool.query(
-"SELECT * FROM stores WHERE id=$1",
+"SELECT id,name,city,email FROM stores WHERE id=$1",
 [id]
 );
 
@@ -132,6 +142,45 @@ res.json(result.rows[0]);
 
 console.log(err);
 res.status(500).json(err);
+
+}
+
+});
+
+/*
+==============================
+UPDATE STORE INFO
+==============================
+*/
+
+router.put("/:id", async (req,res)=>{
+
+try{
+
+const { id } = req.params;
+const { name, city, email } = req.body;
+
+const result = await pool.query(
+`UPDATE stores
+SET name=$1, city=$2, email=$3
+WHERE id=$4
+RETURNING id,name,city,email`,
+[name, city, email, id]
+);
+
+if(result.rows.length === 0){
+return res.status(404).json({ error: "Store not found" });
+}
+
+res.json({
+message: "Store updated successfully",
+store: result.rows[0]
+});
+
+}catch(err){
+
+console.log(err);
+res.status(500).json({ error: err.message });
 
 }
 
@@ -151,14 +200,24 @@ const { id } = req.params;
 
 const result = await pool.query(`
 SELECT
-products.id,
-products.name,
-products.image,
-MIN(prices.price) AS best_price
-FROM prices
-JOIN products ON prices.product_id = products.id
-WHERE prices.store_id = $1
-GROUP BY products.id
+  products.id,
+  products.name,
+  products.variant_label,
+  products.brand,
+  products.image,
+  products.views,
+  products.status,
+  products.category_id,
+  products.created_at,
+  categories.name AS category_name,
+  categories.icon AS category_icon,
+  MIN(prices.price) AS best_price
+FROM products
+LEFT JOIN prices ON prices.product_id = products.id AND prices.store_id = $1
+LEFT JOIN categories ON categories.id = products.category_id
+WHERE products.store_id = $1
+GROUP BY products.id, categories.name, categories.icon
+ORDER BY products.created_at DESC
 `,[id]);
 
 res.json(result.rows);
@@ -168,6 +227,47 @@ res.json(result.rows);
 console.log(err);
 res.status(500).json(err);
 
+}
+
+});
+
+/*
+==============================
+STORE COMPETITION
+— يعرض فقط المنتجات المشتركة مع متاجر أخرى
+==============================
+*/
+
+router.get("/:id/competition", async (req,res)=>{
+
+try{
+
+const { id } = req.params;
+
+// جيب المنتجات الي هذا المتجر عنده سعر فيها
+// وكمان متاجر ثانية عندها سعر لنفس المنتجات
+const result = await pool.query(`
+SELECT
+  p.id AS product_id,
+  p.name AS product_name,
+  s.id AS store_id,
+  s.name AS store_name,
+  pr.price,
+  CASE WHEN s.id = $1 THEN true ELSE false END AS is_mine
+FROM prices pr
+JOIN products p ON pr.product_id = p.id
+JOIN stores s ON pr.store_id = s.id
+WHERE p.id IN (
+  SELECT product_id FROM prices WHERE store_id = $1
+)
+ORDER BY p.name, pr.price ASC
+`, [id]);
+
+res.json(result.rows);
+
+}catch(err){
+console.log(err);
+res.status(500).json({ error: err.message });
 }
 
 });
@@ -232,5 +332,35 @@ res.status(500).json(err);
 }
 
 });
+
+/*
+==============================
+UPLOAD STORE LOGO
+==============================
+*/
+
+const upload = require("../middleware/upload");
+
+router.post("/:id/logo", upload.single("image"), async (req,res)=>{
+
+try{
+
+const { id } = req.params;
+const logoUrl = "/uploads/" + req.file.filename;
+
+await pool.query(
+"UPDATE stores SET logo=$1 WHERE id=$2",
+[logoUrl, id]
+);
+
+res.json({ message: "Logo uploaded", logo: logoUrl });
+
+}catch(err){
+console.log(err);
+res.status(500).json({ error: err.message });
+}
+
+});
+
 
 module.exports = router;

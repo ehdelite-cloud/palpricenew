@@ -1,63 +1,165 @@
 import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
-function StoreLogin(){
+function StoreLogin() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
-  const [email,setEmail] = useState("");
-  const [password,setPassword] = useState("");
+  async function login() {
+    if (!email || !password) {
+      setError("يرجى إدخال الإيميل وكلمة المرور");
+      return;
+    }
+    setError("");
+    setLoading(true);
 
-  const login = () => {
+    try {
+      const res = await fetch("/api/stores/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
 
-    fetch("http://localhost:3000/stores/login",{
-      method:"POST",
-      headers:{
-        "Content-Type":"application/json"
-      },
-      body:JSON.stringify({
-        email,
-        password
-      })
-    })
-    .then(res=>res.json())
-    .then(data=>{
-  alert("Login successful");
+      const data = await res.json();
 
-  localStorage.setItem("store", data.store);
-localStorage.setItem("token", data.token);
+      if (!res.ok) {
+        if (data?.error === "suspended") {
+          setError(data.message || "متجرك معلق. تواصل مع الإدارة.");
+        } else {
+          setError(data || "بيانات غير صحيحة");
+        }
+        setLoading(false);
+        return;
+      }
 
-  window.location.href = "/store/dashboard";
-});
+      localStorage.setItem("storeId", data.store);
+      localStorage.setItem("token", data.token);
+      navigate("/store/dashboard");
 
-  };
+    } catch (err) {
+      setError("حدث خطأ، حاول مجدداً");
+      setLoading(false);
+    }
+  }
 
-  return(
+  return (
+    <div style={{
+      minHeight: "100vh",
+      background: "#f8fafc",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "20px"
+    }}>
+      <div style={{
+        background: "white",
+        borderRadius: "16px",
+        border: "1px solid #e2e8f0",
+        padding: "40px",
+        width: "100%",
+        maxWidth: "400px",
+        boxShadow: "0 4px 24px rgba(0,0,0,0.06)"
+      }}>
 
-    <div style={{padding:"40px"}}>
+        {/* Logo */}
+        <div style={{ textAlign: "center", marginBottom: "32px" }}>
+          <h2 style={{ fontSize: "24px", fontWeight: "700", color: "#22c55e", margin: 0 }}>
+            PalPrice
+          </h2>
+          <p style={{ color: "#64748b", marginTop: "8px", fontSize: "15px" }}>
+            تسجيل دخول المتجر
+          </p>
+        </div>
 
-      <h1>Store Login</h1>
+        {error && (
+          <div style={{
+            background: "#fef2f2",
+            border: "1px solid #fecaca",
+            color: "#dc2626",
+            padding: "12px 16px",
+            borderRadius: "8px",
+            fontSize: "14px",
+            marginBottom: "20px"
+          }}>
+            {error}
+          </div>
+        )}
 
-      <input
-        placeholder="Email"
-        onChange={(e)=>setEmail(e.target.value)}
-      />
+        <div style={{ marginBottom: "16px" }}>
+          <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "6px" }}>
+            البريد الإلكتروني
+          </label>
+          <input
+            type="email"
+            placeholder="store@example.com"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && login()}
+            style={{
+              width: "100%",
+              padding: "10px 14px",
+              borderRadius: "8px",
+              border: "1px solid #e2e8f0",
+              fontSize: "14px",
+              boxSizing: "border-box",
+              outline: "none"
+            }}
+          />
+        </div>
 
-      <br/><br/>
+        <div style={{ marginBottom: "24px" }}>
+          <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "6px" }}>
+            كلمة المرور
+          </label>
+          <input
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && login()}
+            style={{
+              width: "100%",
+              padding: "10px 14px",
+              borderRadius: "8px",
+              border: "1px solid #e2e8f0",
+              fontSize: "14px",
+              boxSizing: "border-box",
+              outline: "none"
+            }}
+          />
+        </div>
 
-      <input
-        type="password"
-        placeholder="Password"
-        onChange={(e)=>setPassword(e.target.value)}
-      />
+        <button
+          onClick={login}
+          disabled={loading}
+          style={{
+            width: "100%",
+            padding: "12px",
+            background: loading ? "#86efac" : "#22c55e",
+            color: "white",
+            border: "none",
+            borderRadius: "8px",
+            fontSize: "15px",
+            fontWeight: "600",
+            cursor: loading ? "not-allowed" : "pointer"
+          }}
+        >
+          {loading ? "جاري التحقق..." : "تسجيل الدخول"}
+        </button>
 
-      <br/><br/>
+        <p style={{ textAlign: "center", marginTop: "20px", fontSize: "14px", color: "#64748b" }}>
+          ليس لديك حساب؟{" "}
+          <Link to="/store/register" style={{ color: "#22c55e", fontWeight: "600", textDecoration: "none" }}>
+            سجل متجرك
+          </Link>
+        </p>
 
-      <button onClick={login}>
-        Login
-      </button>
-
+      </div>
     </div>
-
   );
-
 }
 
 export default StoreLogin;

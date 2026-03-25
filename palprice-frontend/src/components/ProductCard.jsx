@@ -1,124 +1,88 @@
 import { Link } from "react-router-dom";
-import { useState } from "react";
 
-function ProductCard({ product, lang }) {
+function fixImg(url) {
+  if (!url) return "";
+  return url.startsWith("/") ? `/api${url}` : url;
+}
 
-const [show,setShow] = useState(false);
+function ProductCard({ product, lang = "ar" }) {
+  const displayName = product.variant_label || product.name;
 
-const openQuickView = () => {
-setShow(true);
-document.body.style.overflow = "hidden";
-};
+  return (
+    <Link to={`/product/${product.id}`} style={{ textDecoration: "none", display: "block" }}>
+      <div className="product-card" style={{ cursor: "pointer" }}>
 
-const closeQuickView = () => {
-setShow(false);
-document.body.style.overflow = "auto";
-};
+        {/* BADGE */}
+        {product.badge && (
+          <div className={`product-badge ${product.badge}`}>
+            {product.badge === "trending" && "🔥 رائج"}
+            {product.badge === "deal"     && "💰 أفضل سعر"}
+            {product.badge === "drop"     && "📉 انخفاض"}
+          </div>
+        )}
 
-return (
+        {/* IMAGE */}
+        <div className="product-image-wrap">
+          {product.image ? (
+            <img
+              src={fixImg(product.image)}
+              alt={displayName}
+              className="product-image"
+              loading="lazy"
+              onError={e => { e.target.style.display = "none"; }}
+            />
+          ) : (
+            <div className="product-no-image">📦</div>
+          )}
+        </div>
 
-<>
+        {/* BODY */}
+        <div className="product-body">
+          {product.brand && <p className="product-brand">{product.brand}</p>}
 
-<div className="card product-card">
+          <h3 className="product-title">{displayName}</h3>
 
-{/* BADGE */}
+          {/* Variant chips */}
+          {(product.variant_storage || product.variant_color || product.variant_edition) && (
+            <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginBottom: "6px" }}>
+              {product.variant_storage && (
+                <span style={{ background: "#f1f5f9", color: "#475569", fontSize: "10px", fontWeight: "600", padding: "2px 7px", borderRadius: "4px" }}>
+                  {product.variant_storage}
+                </span>
+              )}
+              {product.variant_color && (
+                <span style={{ background: "#f1f5f9", color: "#475569", fontSize: "10px", fontWeight: "600", padding: "2px 7px", borderRadius: "4px" }}>
+                  {product.variant_color}
+                </span>
+              )}
+              {product.variant_edition && (
+                <span style={{ background: "#f0fdf4", color: "#16a34a", fontSize: "10px", fontWeight: "600", padding: "2px 7px", borderRadius: "4px" }}>
+                  {product.variant_edition}
+                </span>
+              )}
+            </div>
+          )}
 
-{product.badge && (
-<div className={`product-badge ${product.badge}`}>
-{product.badge === "trending" && "🔥 Trending"}
-{product.badge === "deal" && "💰 Best Deal"}
-{product.badge === "drop" && "📉 Price Drop"}
-</div>
-)}
+          <div className="product-footer">
+            <div>
+              <p className="product-price-label">
+                {lang === "ar" ? "أفضل سعر" : "Best Price"}
+              </p>
+              <p className="product-price">
+                {product.best_price
+                  ? `${Number(product.best_price).toLocaleString()} ₪`
+                  : (lang === "ar" ? "—" : "—")}
+              </p>
+            </div>
+            <span className="product-btn">
+              {lang === "ar" ? "عرض" : "View"}
+            </span>
+          </div>
+        </div>
 
-{/* IMAGE */}
-
-{product.image ? (
-<img
-src={product.image}
-alt={product.name}
-className="product-image"
-loading="lazy"
-/>
-) : (
-<div className="product-no-image">
-No Image
-</div>
-)}
-
-<h3 className="product-title">
-{product.name}
-</h3>
-
-<p className="product-price">
-{product.best_price
-? product.best_price + " ₪"
-: (lang === "ar" ? "لا يوجد سعر" : "No price")}
-</p>
-
-<Link
-to={`/product/${product.id}`}
-className="product-button"
->
-{lang === "ar" ? "عرض الأسعار" : "View Prices"}
-</Link>
-
-<button
-className="quick-view-btn"
-onClick={openQuickView}
->
-{lang === "ar" ? "عرض سريع" : "Quick View"}
-</button>
-
-</div>
-
-
-{/* QUICK VIEW MODAL */}
-
-{show && (
-
-<div className="quick-view-overlay">
-
-<div className="quick-view-card">
-
-<button
-className="quick-close"
-onClick={closeQuickView}
->
-✕
-</button>
-
-<img
-src={product.image}
-alt={product.name}
-className="quick-view-image"
-/>
-
-<h3>{product.name}</h3>
-
-<p className="product-price">
-{product.best_price
-? product.best_price + " ₪"
-: (lang === "ar" ? "لا يوجد سعر" : "No price")}
-</p>
-
-<Link
-to={`/product/${product.id}`}
-className="product-button"
->
-{lang === "ar" ? "عرض التفاصيل" : "View Details"}
-</Link>
-
-</div>
-
-</div>
-
-)}
-
-</>
-
-);
-
+      </div>
+    </Link>
+  );
 }
 
 export default ProductCard;

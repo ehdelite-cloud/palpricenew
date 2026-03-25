@@ -25,7 +25,7 @@ const formData = new FormData();
 
 formData.append("image",file);
 
-fetch(`http://localhost:3000/products/${productId}/image`,{
+fetch(`/api/products/${productId}/image`,{
 method:"POST",
 body:formData
 })
