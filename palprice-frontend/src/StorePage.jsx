@@ -6,20 +6,20 @@ const PRODUCTS_PER_PAGE = 12;
 
 function StorePage({ lang = "ar" }) {
   const { id } = useParams();
-  const [store, setStore]               = useState(null);
-  const [products, setProducts]         = useState([]);
-  const [rating, setRating]             = useState(null);
-  const [userRating, setUserRating]     = useState(5);
-  const [comment, setComment]           = useState("");
-  const [reviewSent, setReviewSent]     = useState(false);
-  const [loading, setLoading]           = useState(true);
-  const [activeTab, setActiveTab]       = useState("products");
-  const [search, setSearch]             = useState("");
-  const [sort, setSort]                 = useState("");
-  const [page, setPage]                 = useState(1);
-  const [tree, setTree]                 = useState([]);       // شجرة الفئات الكاملة
-  const [activeMainId, setActiveMainId] = useState(null);    // الفئة الرئيسية المضغوطة
-  const [activeSubId, setActiveSubId]   = useState(null);    // الفئة الفرعية المختارة
+  const [store,      setStore]      = useState(null);
+  const [products,   setProducts]   = useState([]);
+  const [rating,     setRating]     = useState(null);
+  const [userRating, setUserRating] = useState(5);
+  const [comment,    setComment]    = useState("");
+  const [reviewSent, setReviewSent] = useState(false);
+  const [loading,    setLoading]    = useState(true);
+  const [activeTab,  setActiveTab]  = useState("products");
+  const [search,     setSearch]     = useState("");
+  const [sort,       setSort]       = useState("");
+  const [page,       setPage]       = useState(1);
+  const [tree,       setTree]       = useState([]);
+  const [activeMainId, setActiveMainId] = useState(null);
+  const [activeSubId,  setActiveSubId]  = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -30,7 +30,9 @@ function StorePage({ lang = "ar" }) {
       fetch("/api/categories/tree").then(r => r.json()),
     ]).then(([storeData, productsData, ratingData, treeData]) => {
       setStore(storeData);
-      const approved = Array.isArray(productsData) ? productsData.filter(p => p.status === "approved") : [];
+      const approved = Array.isArray(productsData)
+        ? productsData.filter(p => p.status === "approved")
+        : [];
       setProducts(approved);
       setRating(ratingData);
       if (Array.isArray(treeData)) setTree(treeData);
@@ -41,8 +43,9 @@ function StorePage({ lang = "ar" }) {
   async function submitReview() {
     if (!comment.trim()) return;
     await fetch(`/api/stores/${id}/review`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rating: userRating, comment })
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rating: userRating, comment }),
     });
     setComment(""); setUserRating(5); setReviewSent(true);
     setTimeout(() => setReviewSent(false), 3000);
@@ -62,38 +65,29 @@ function StorePage({ lang = "ar" }) {
     </div>
   );
 
-  const logoSrc      = store.logo ? (store.logo.startsWith("/") ? `/api${store.logo}` : store.logo) : null;
-  const avgRating    = rating && Number(rating.total) > 0 ? Number(rating.average) : 0;
+  const logoSrc    = store.logo ? (store.logo.startsWith("/") ? `/api${store.logo}` : store.logo) : null;
+  const avgRating  = rating && Number(rating.total) > 0 ? Number(rating.average) : 0;
   const totalReviews = rating ? Number(rating.total) : 0;
 
-  // IDs الفئات الموجودة في منتجات هذا المتجر
   const productCatIds = new Set(products.map(p => Number(p.category_id)).filter(Boolean));
-
-  // الفئات الرئيسية اللي عندها منتجات في هذا المتجر
   const mainCatsWithProducts = tree.filter(main => {
     const subIds = (main.children || []).map(s => s.id);
-    const allIds = [main.id, ...subIds];
-    return allIds.some(cid => productCatIds.has(cid));
+    return [main.id, ...subIds].some(cid => productCatIds.has(cid));
   });
-
-  // الفئات الفرعية للفئة الرئيسية النشطة — فقط اللي عندها منتجات
   const activeSubs = activeMainId
     ? (tree.find(m => m.id === activeMainId)?.children || []).filter(sub => productCatIds.has(sub.id))
     : [];
 
-  // فلتر المنتجات
   let filtered = products.filter(p => {
-    // فلتر الفئة
     let matchCat = true;
     if (activeSubId) {
       matchCat = Number(p.category_id) === activeSubId;
     } else if (activeMainId) {
-      const main = tree.find(m => m.id === activeMainId);
+      const main  = tree.find(m => m.id === activeMainId);
       const subIds = new Set((main?.children || []).map(s => s.id));
       subIds.add(activeMainId);
       matchCat = subIds.has(Number(p.category_id));
     }
-    // فلتر البحث
     const matchSearch = !search ||
       (p.variant_label || p.name || "").toLowerCase().includes(search.toLowerCase()) ||
       (p.brand || "").toLowerCase().includes(search.toLowerCase());
@@ -107,31 +101,46 @@ function StorePage({ lang = "ar" }) {
   const totalPages = Math.ceil(filtered.length / PRODUCTS_PER_PAGE);
   const paginated  = filtered.slice((page - 1) * PRODUCTS_PER_PAGE, page * PRODUCTS_PER_PAGE);
 
-  // عدد منتجات فئة رئيسية
   function countForMain(main) {
-    const subIds = new Set((main.children || []).map(s => s.id));
-    subIds.add(main.id);
+    const subIds = new Set((main?.children || []).map(s => s.id));
+    subIds.add(main?.id);
     return products.filter(p => subIds.has(Number(p.category_id))).length;
   }
 
   const TABS = [
-    { key: "products", icon: "📦", label: lang === "ar" ? "المنتجات" : "Products", count: products.length },
-    { key: "reviews",  icon: "⭐", label: lang === "ar" ? "التقييمات" : "Reviews",  count: totalReviews },
-    { key: "about",    icon: "ℹ️", label: lang === "ar" ? "معلومات" : "About" },
+    { key: "products", icon: "📦", label: lang === "ar" ? "المنتجات"  : "Products",  count: products.length },
+    { key: "reviews",  icon: "⭐", label: lang === "ar" ? "التقييمات" : "Reviews",   count: totalReviews    },
+    { key: "about",    icon: "ℹ️", label: lang === "ar" ? "معلومات"   : "About"                             },
   ];
+
+  // بيانات تبويب About مع جميع حقول التواصل
+  const aboutRows = [
+    { icon: "🏪", label: lang === "ar" ? "اسم المتجر"        : "Store Name",  value: store.name    },
+    { icon: "📍", label: lang === "ar" ? "المدينة"           : "City",        value: store.city    },
+    { icon: "📮", label: lang === "ar" ? "العنوان"           : "Address",     value: store.address },
+    { icon: "📧", label: lang === "ar" ? "البريد الإلكتروني" : "Email",       value: store.email   },
+    { icon: "📞", label: lang === "ar" ? "الهاتف"            : "Phone",       value: store.phone,  href: store.phone    ? `tel:${store.phone}`                             : null },
+    { icon: "💬", label: "WhatsApp",                                           value: store.whatsapp ? `WhatsApp` : null,  href: store.whatsapp ? `https://wa.me/${store.whatsapp.replace(/\D/g,'')}` : null },
+    { icon: "📸", label: "Instagram",                                          value: store.instagram ? `@${store.instagram}` : null, href: store.instagram ? `https://instagram.com/${store.instagram}` : null },
+    { icon: "📘", label: "Facebook",                                           value: store.facebook, href: store.facebook ? `https://facebook.com/${store.facebook}` : null },
+    { icon: "🌐", label: lang === "ar" ? "الموقع الإلكتروني" : "Website",     value: store.website,  href: store.website },
+    { icon: "📦", label: lang === "ar" ? "عدد المنتجات"      : "Products",    value: `${products.length} ${lang === "ar" ? "منتج" : "products"}` },
+    { icon: "⭐", label: lang === "ar" ? "التقييم"           : "Rating",      value: avgRating > 0 ? `${avgRating.toFixed(1)} / 5 (${totalReviews} ${lang === "ar" ? "تقييم" : "reviews"})` : (lang === "ar" ? "لا يوجد تقييم بعد" : "No reviews yet") },
+  ].filter(r => r.value);
 
   return (
     <div>
-      {/* ===== HERO ===== */}
-      <div style={{ background: "linear-gradient(160deg, #0f172a 0%, #1a2744 50%, #0d3320 100%)", position: "relative", overflow: "hidden", paddingBottom: "0" }}>
+      {/* ══════ HERO ══════ */}
+      {/* ← إصلاح: حذفنا overflow:hidden من الـ outer div لأنه كان يمنع الـ scroll على الموبايل */}
+      <div style={{ background: "linear-gradient(160deg, #0f172a 0%, #1a2744 50%, #0d3320 100%)", position: "relative", paddingBottom: "0" }}>
         <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 70% 60% at 80% 50%, rgba(34,197,94,0.08) 0%, transparent 60%)", pointerEvents: "none" }} />
         <div style={{ maxWidth: "1240px", margin: "auto", padding: "48px 24px 0", position: "relative", zIndex: 1 }}>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: "28px", flexWrap: "wrap", paddingBottom: "32px" }}>
 
+          {/* معلومات المتجر */}
+          <div style={{ display: "flex", alignItems: "flex-end", gap: "28px", flexWrap: "wrap", paddingBottom: "32px" }}>
             <div style={{ width: "110px", height: "110px", borderRadius: "22px", background: "rgba(255,255,255,0.06)", border: "2px solid rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, boxShadow: "0 16px 48px rgba(0,0,0,0.4)" }}>
               {logoSrc ? <img src={logoSrc} alt={store.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => e.target.style.display = "none"} /> : <span style={{ fontSize: "48px" }}>🏪</span>}
             </div>
-
             <div style={{ flex: 1, minWidth: "220px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px", flexWrap: "wrap" }}>
                 <h1 style={{ fontSize: "clamp(22px, 3vw, 32px)", fontWeight: "900", color: "white", margin: 0, fontFamily: "Cairo, Tajawal, sans-serif" }}>{store.name}</h1>
@@ -148,11 +157,12 @@ function StorePage({ lang = "ar" }) {
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: "12px", flexShrink: 0 }}>
+            {/* Stats */}
+            <div style={{ display: "flex", gap: "12px", flexShrink: 0, flexWrap: "wrap" }}>
               {[
-                { value: products.length,           label: lang === "ar" ? "منتج" : "Products" },
-                { value: mainCatsWithProducts.length, label: lang === "ar" ? "فئة" : "Categories" },
-                { value: totalReviews,               label: lang === "ar" ? "تقييم" : "Reviews" },
+                { value: products.length,              label: lang === "ar" ? "منتج"  : "Products"   },
+                { value: mainCatsWithProducts.length,  label: lang === "ar" ? "فئة"   : "Categories" },
+                { value: totalReviews,                 label: lang === "ar" ? "تقييم" : "Reviews"    },
               ].map((s, i) => (
                 <div key={i} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "14px", padding: "12px 18px", textAlign: "center" }}>
                   <p style={{ fontSize: "22px", fontWeight: "900", color: "#22c55e", margin: 0, fontFamily: "Cairo, sans-serif" }}>{s.value}</p>
@@ -163,7 +173,7 @@ function StorePage({ lang = "ar" }) {
           </div>
 
           {/* Tabs */}
-          <div style={{ display: "flex", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <div style={{ display: "flex", borderTop: "1px solid rgba(255,255,255,0.06)", overflowX: "auto" }}>
             {TABS.map(tab => (
               <button key={tab.key} onClick={() => setActiveTab(tab.key)}
                 style={{ padding: "14px 22px", background: "none", border: "none", borderBottom: activeTab === tab.key ? "2px solid #22c55e" : "2px solid transparent", color: activeTab === tab.key ? "#22c55e" : "#64748b", fontSize: "13px", fontWeight: activeTab === tab.key ? "700" : "500", cursor: "pointer", fontFamily: "Tajawal, sans-serif", display: "flex", alignItems: "center", gap: "6px", transition: "all 0.2s", whiteSpace: "nowrap" }}>
@@ -177,70 +187,45 @@ function StorePage({ lang = "ar" }) {
         </div>
       </div>
 
-      {/* ===== CONTENT ===== */}
+      {/* ══════ CONTENT ══════ */}
       <div style={{ maxWidth: "1240px", margin: "auto", padding: "28px 24px 60px" }}>
 
-        {/* PRODUCTS */}
+        {/* ── PRODUCTS ── */}
         {activeTab === "products" && (
           <div>
-
-            {/* ===== الفئات الهرمية — مثل الهوم بيج ===== */}
+            {/* الفئات */}
             {mainCatsWithProducts.length > 0 && (
               <div style={{ background: "#0f172a", borderRadius: "20px", padding: "24px", marginBottom: "24px" }}>
-
-                {/* العنوان */}
                 <p style={{ color: "#22c55e", fontSize: "11px", fontWeight: "700", letterSpacing: "2px", textTransform: "uppercase", margin: "0 0 14px" }}>
                   {lang === "ar" ? "تصفح حسب الفئة" : "BROWSE BY CATEGORY"}
                 </p>
-
-                {/* الفئات الرئيسية — أزرار أفقية */}
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: activeSubs.length > 0 || activeMainId ? "20px" : "0" }}>
-
-                  {/* زر الكل */}
                   <button onClick={() => { setActiveMainId(null); setActiveSubId(null); setPage(1); }}
-                    style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 18px", borderRadius: "99px", border: `2px solid ${!activeMainId ? "#22c55e" : "rgba(255,255,255,0.1)"}`, background: !activeMainId ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.05)", color: !activeMainId ? "#22c55e" : "rgba(255,255,255,0.7)", fontWeight: !activeMainId ? "700" : "500", fontSize: "13px", cursor: "pointer", fontFamily: "Tajawal, sans-serif", transition: "all 0.2s", whiteSpace: "nowrap" }}>
-                    🛍️ {lang === "ar" ? "الكل" : "All"}
-                    <span style={{ background: !activeMainId ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.1)", color: !activeMainId ? "#22c55e" : "rgba(255,255,255,0.5)", borderRadius: "99px", fontSize: "11px", padding: "1px 7px", fontWeight: "700" }}>{products.length}</span>
+                    style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 18px", borderRadius: "99px", border: `2px solid ${!activeMainId ? "#22c55e" : "rgba(255,255,255,0.1)"}`, background: !activeMainId ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.05)", color: !activeMainId ? "#22c55e" : "rgba(255,255,255,0.7)", fontWeight: !activeMainId ? "700" : "500", fontSize: "13px", cursor: "pointer", fontFamily: "Tajawal, sans-serif", whiteSpace: "nowrap" }}>
+                    🛍️ {lang === "ar" ? "الكل" : "All"} <span style={{ background: !activeMainId ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.1)", color: !activeMainId ? "#22c55e" : "rgba(255,255,255,0.5)", borderRadius: "99px", fontSize: "11px", padding: "1px 7px", fontWeight: "700" }}>{products.length}</span>
                   </button>
-
-                  {/* الفئات الرئيسية */}
                   {mainCatsWithProducts.map(main => (
-                    <button key={main.id}
-                      onClick={() => {
-                        if (activeMainId === main.id) { setActiveMainId(null); setActiveSubId(null); }
-                        else { setActiveMainId(main.id); setActiveSubId(null); }
-                        setPage(1);
-                      }}
-                      style={{ display: "flex", alignItems: "center", gap: "7px", padding: "9px 18px", borderRadius: "99px", border: `2px solid ${activeMainId === main.id ? "#22c55e" : "rgba(255,255,255,0.1)"}`, background: activeMainId === main.id ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.05)", color: activeMainId === main.id ? "#22c55e" : "rgba(255,255,255,0.7)", fontWeight: activeMainId === main.id ? "700" : "500", fontSize: "13px", cursor: "pointer", fontFamily: "Tajawal, sans-serif", transition: "all 0.2s", whiteSpace: "nowrap" }}
-                      onMouseEnter={e => { if (activeMainId !== main.id) { e.currentTarget.style.borderColor = "rgba(34,197,94,0.4)"; e.currentTarget.style.color = "white"; } }}
-                      onMouseLeave={e => { if (activeMainId !== main.id) { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "rgba(255,255,255,0.7)"; } }}>
+                    <button key={main.id} onClick={() => { setActiveMainId(activeMainId === main.id ? null : main.id); setActiveSubId(null); setPage(1); }}
+                      style={{ display: "flex", alignItems: "center", gap: "7px", padding: "9px 18px", borderRadius: "99px", border: `2px solid ${activeMainId === main.id ? "#22c55e" : "rgba(255,255,255,0.1)"}`, background: activeMainId === main.id ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.05)", color: activeMainId === main.id ? "#22c55e" : "rgba(255,255,255,0.7)", fontWeight: activeMainId === main.id ? "700" : "500", fontSize: "13px", cursor: "pointer", fontFamily: "Tajawal, sans-serif", whiteSpace: "nowrap" }}>
                       <span>{main.icon || "📦"}</span>
                       {lang === "ar" ? main.name : (main.name_en || main.name)}
                       <span style={{ background: activeMainId === main.id ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.1)", color: activeMainId === main.id ? "#22c55e" : "rgba(255,255,255,0.5)", borderRadius: "99px", fontSize: "11px", padding: "1px 7px", fontWeight: "700" }}>{countForMain(main)}</span>
-                      {activeMainId === main.id && <span style={{ fontSize: "10px" }}>▼</span>}
                     </button>
                   ))}
                 </div>
-
-                {/* الفئات الفرعية — تظهر عند اختيار فئة رئيسية */}
                 {activeMainId && activeSubs.length > 0 && (
-                  <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "16px", animation: "fadeIn 0.2s ease" }}>
+                  <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "16px" }}>
                     <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                      {/* كل الفئة الرئيسية */}
                       <button onClick={() => { setActiveSubId(null); setPage(1); }}
-                        style={{ display: "flex", alignItems: "center", gap: "6px", padding: "7px 14px", borderRadius: "99px", border: `1.5px solid ${!activeSubId ? "#22c55e" : "rgba(255,255,255,0.1)"}`, background: !activeSubId ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.03)", color: !activeSubId ? "#22c55e" : "rgba(255,255,255,0.55)", fontWeight: !activeSubId ? "700" : "400", fontSize: "12px", cursor: "pointer", fontFamily: "Tajawal, sans-serif", transition: "all 0.15s" }}>
+                        style={{ padding: "7px 14px", borderRadius: "99px", border: `1.5px solid ${!activeSubId ? "#22c55e" : "rgba(255,255,255,0.1)"}`, background: !activeSubId ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.03)", color: !activeSubId ? "#22c55e" : "rgba(255,255,255,0.55)", fontWeight: !activeSubId ? "700" : "400", fontSize: "12px", cursor: "pointer", fontFamily: "Tajawal, sans-serif" }}>
                         {lang === "ar" ? "كل الفئة" : "All"} ({countForMain(tree.find(m => m.id === activeMainId))})
                       </button>
-
                       {activeSubs.map(sub => {
                         const subCount = products.filter(p => Number(p.category_id) === sub.id).length;
                         return (
                           <button key={sub.id} onClick={() => { setActiveSubId(sub.id); setPage(1); }}
-                            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "7px 14px", borderRadius: "99px", border: `1.5px solid ${activeSubId === sub.id ? "#22c55e" : "rgba(255,255,255,0.1)"}`, background: activeSubId === sub.id ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.03)", color: activeSubId === sub.id ? "#22c55e" : "rgba(255,255,255,0.55)", fontWeight: activeSubId === sub.id ? "700" : "400", fontSize: "12px", cursor: "pointer", fontFamily: "Tajawal, sans-serif", transition: "all 0.15s", whiteSpace: "nowrap" }}
-                            onMouseEnter={e => { if (activeSubId !== sub.id) { e.currentTarget.style.borderColor = "rgba(34,197,94,0.3)"; e.currentTarget.style.color = "rgba(255,255,255,0.8)"; } }}
-                            onMouseLeave={e => { if (activeSubId !== sub.id) { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "rgba(255,255,255,0.55)"; } }}>
-                            {sub.icon} {lang === "ar" ? sub.name : (sub.name_en || sub.name)}
-                            <span style={{ opacity: 0.6, fontSize: "11px" }}>({subCount})</span>
+                            style={{ padding: "7px 14px", borderRadius: "99px", border: `1.5px solid ${activeSubId === sub.id ? "#22c55e" : "rgba(255,255,255,0.1)"}`, background: activeSubId === sub.id ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.03)", color: activeSubId === sub.id ? "#22c55e" : "rgba(255,255,255,0.55)", fontWeight: activeSubId === sub.id ? "700" : "400", fontSize: "12px", cursor: "pointer", fontFamily: "Tajawal, sans-serif", whiteSpace: "nowrap" }}>
+                            {sub.icon} {lang === "ar" ? sub.name : (sub.name_en || sub.name)} <span style={{ opacity: 0.6, fontSize: "11px" }}>({subCount})</span>
                           </button>
                         );
                       })}
@@ -250,14 +235,15 @@ function StorePage({ lang = "ar" }) {
               </div>
             )}
 
-            {/* ===== Toolbar + المنتجات ===== */}
+            {/* Toolbar */}
             <div style={{ display: "flex", gap: "10px", marginBottom: "16px", flexWrap: "wrap", alignItems: "center" }}>
               <div style={{ position: "relative", flex: 1, minWidth: "160px" }}>
                 <span style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "13px" }}>🔍</span>
                 <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
                   placeholder={lang === "ar" ? "ابحث في المتجر..." : "Search store..."}
                   style={{ width: "100%", padding: "9px 36px 9px 14px", borderRadius: "10px", border: "1.5px solid #e2e8f0", fontSize: "13px", fontFamily: "Tajawal, sans-serif", outline: "none", background: "white", boxSizing: "border-box" }}
-                  onFocus={e => e.target.style.borderColor = "#22c55e"} onBlur={e => e.target.style.borderColor = "#e2e8f0"} />
+                  onFocus={e => e.target.style.borderColor = "#22c55e"}
+                  onBlur={e => e.target.style.borderColor = "#e2e8f0"} />
               </div>
               <select value={sort} onChange={e => { setSort(e.target.value); setPage(1); }}
                 style={{ padding: "9px 14px", borderRadius: "10px", border: "1.5px solid #e2e8f0", fontSize: "13px", fontFamily: "Tajawal, sans-serif", background: "white", cursor: "pointer", outline: "none" }}>
@@ -266,11 +252,7 @@ function StorePage({ lang = "ar" }) {
                 <option value="price_high">{lang === "ar" ? "السعر ↓" : "Price ↓"}</option>
                 <option value="name">{lang === "ar" ? "الاسم" : "Name"}</option>
               </select>
-              <span style={{ fontSize: "12px", color: "#94a3b8" }}>
-                {filtered.length} {lang === "ar" ? "منتج" : "products"}
-                {activeSubId && <span style={{ color: "#22c55e", fontWeight: "600" }}> · {tree.flatMap(m => m.children || []).find(s => s.id === activeSubId)?.name}</span>}
-                {activeMainId && !activeSubId && <span style={{ color: "#22c55e", fontWeight: "600" }}> · {tree.find(m => m.id === activeMainId)?.name}</span>}
-              </span>
+              <span style={{ fontSize: "12px", color: "#94a3b8" }}>{filtered.length} {lang === "ar" ? "منتج" : "products"}</span>
             </div>
 
             {filtered.length === 0 ? (
@@ -285,29 +267,11 @@ function StorePage({ lang = "ar" }) {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "14px", marginBottom: "24px" }}>
                   {paginated.map(product => <ProductCard key={product.id} product={product} lang={lang} />)}
                 </div>
-
                 {totalPages > 1 && (
                   <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-                    <button onClick={() => { setPage(p => Math.max(1, p-1)); window.scrollTo(0, 300); }} disabled={page === 1}
-                      style={{ padding: "8px 14px", borderRadius: "10px", border: "1.5px solid #e2e8f0", background: page === 1 ? "#f8fafc" : "white", color: page === 1 ? "#94a3b8" : "#0f172a", cursor: page === 1 ? "not-allowed" : "pointer", fontSize: "13px", fontFamily: "Tajawal, sans-serif" }}>
-                      {lang === "ar" ? "→ السابق" : "← Prev"}
-                    </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
-                      .reduce((acc, p, i, arr) => { if (i > 0 && p - arr[i-1] > 1) acc.push("..."); acc.push(p); return acc; }, [])
-                      .map((p, i) => p === "..." ? (
-                        <span key={`d${i}`} style={{ padding: "8px 4px", color: "#94a3b8" }}>...</span>
-                      ) : (
-                        <button key={p} onClick={() => { setPage(p); window.scrollTo(0, 300); }}
-                          style={{ width: "36px", height: "36px", borderRadius: "10px", border: `1.5px solid ${page === p ? "#22c55e" : "#e2e8f0"}`, background: page === p ? "#22c55e" : "white", color: page === p ? "white" : "#0f172a", cursor: "pointer", fontSize: "13px", fontWeight: page === p ? "700" : "400", fontFamily: "Tajawal, sans-serif" }}>
-                          {p}
-                        </button>
-                      ))
-                    }
-                    <button onClick={() => { setPage(p => Math.min(totalPages, p+1)); window.scrollTo(0, 300); }} disabled={page === totalPages}
-                      style={{ padding: "8px 14px", borderRadius: "10px", border: "1.5px solid #e2e8f0", background: page === totalPages ? "#f8fafc" : "white", color: page === totalPages ? "#94a3b8" : "#0f172a", cursor: page === totalPages ? "not-allowed" : "pointer", fontSize: "13px", fontFamily: "Tajawal, sans-serif" }}>
-                      {lang === "ar" ? "التالي ←" : "Next →"}
-                    </button>
+                    <button onClick={() => { setPage(p => Math.max(1, p-1)); window.scrollTo(0,300); }} disabled={page===1} style={{ padding: "8px 14px", borderRadius: "10px", border: "1.5px solid #e2e8f0", background: page===1?"#f8fafc":"white", color: page===1?"#94a3b8":"#0f172a", cursor: page===1?"not-allowed":"pointer", fontSize: "13px", fontFamily: "Tajawal, sans-serif" }}>{lang==="ar"?"→ السابق":"← Prev"}</button>
+                    {Array.from({ length: totalPages }, (_, i) => i+1).filter(p => p===1||p===totalPages||Math.abs(p-page)<=2).reduce((acc,p,i,arr) => { if(i>0&&p-arr[i-1]>1)acc.push("..."); acc.push(p); return acc; }, []).map((p,i) => p==="..."?(<span key={`d${i}`} style={{ padding:"8px 4px", color:"#94a3b8" }}>...</span>):(<button key={p} onClick={()=>{setPage(p);window.scrollTo(0,300);}} style={{ width:"36px", height:"36px", borderRadius:"10px", border:`1.5px solid ${page===p?"#22c55e":"#e2e8f0"}`, background:page===p?"#22c55e":"white", color:page===p?"white":"#0f172a", cursor:"pointer", fontSize:"13px", fontWeight:page===p?"700":"400", fontFamily:"Tajawal, sans-serif" }}>{p}</button>))}
+                    <button onClick={() => { setPage(p => Math.min(totalPages, p+1)); window.scrollTo(0,300); }} disabled={page===totalPages} style={{ padding: "8px 14px", borderRadius: "10px", border: "1.5px solid #e2e8f0", background: page===totalPages?"#f8fafc":"white", color: page===totalPages?"#94a3b8":"#0f172a", cursor: page===totalPages?"not-allowed":"pointer", fontSize: "13px", fontFamily: "Tajawal, sans-serif" }}>{lang==="ar"?"التالي ←":"Next →"}</button>
                   </div>
                 )}
               </>
@@ -315,69 +279,73 @@ function StorePage({ lang = "ar" }) {
           </div>
         )}
 
-        {/* REVIEWS */}
+        {/* ── REVIEWS ── */}
         {activeTab === "reviews" && (
           <div style={{ maxWidth: "680px" }}>
             {avgRating > 0 && (
               <div style={{ background: "white", borderRadius: "16px", border: "1px solid #e2e8f0", padding: "28px", marginBottom: "20px", textAlign: "center" }}>
                 <p style={{ fontSize: "52px", fontWeight: "900", color: "#0f172a", margin: 0, lineHeight: 1 }}>{avgRating.toFixed(1)}</p>
                 <div style={{ display: "flex", gap: "2px", justifyContent: "center", margin: "8px 0 4px" }}>
-                  {[1,2,3,4,5].map(s => <span key={s} style={{ color: s <= Math.round(avgRating) ? "#f59e0b" : "#e2e8f0", fontSize: "22px" }}>★</span>)}
+                  {[1,2,3,4,5].map(s => <span key={s} style={{ color: s<=Math.round(avgRating)?"#f59e0b":"#e2e8f0", fontSize: "22px" }}>★</span>)}
                 </div>
-                <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>{totalReviews} {lang === "ar" ? "تقييم" : "reviews"}</p>
+                <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>{totalReviews} {lang==="ar"?"تقييم":"reviews"}</p>
               </div>
             )}
             <div style={{ background: "white", borderRadius: "16px", border: "1px solid #e2e8f0", padding: "24px" }}>
-              <h3 style={{ fontSize: "15px", fontWeight: "700", color: "#0f172a", margin: "0 0 16px" }}>✍️ {lang === "ar" ? "قيّم هذا المتجر" : "Rate this store"}</h3>
+              <h3 style={{ fontSize: "15px", fontWeight: "700", color: "#0f172a", margin: "0 0 16px" }}>✍️ {lang==="ar"?"قيّم هذا المتجر":"Rate this store"}</h3>
               <div style={{ display: "flex", gap: "6px", marginBottom: "14px" }}>
                 {[1,2,3,4,5].map(s => (
-                  <span key={s} onClick={() => setUserRating(s)}
-                    style={{ fontSize: "32px", cursor: "pointer", color: s <= userRating ? "#f59e0b" : "#e2e8f0", transition: "transform 0.1s" }}
-                    onMouseEnter={e => e.currentTarget.style.transform = "scale(1.2)"}
-                    onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>★</span>
+                  <span key={s} onClick={() => setUserRating(s)} style={{ fontSize: "32px", cursor: "pointer", color: s<=userRating?"#f59e0b":"#e2e8f0", transition: "transform 0.1s" }}
+                    onMouseEnter={e => e.currentTarget.style.transform="scale(1.2)"}
+                    onMouseLeave={e => e.currentTarget.style.transform="scale(1)"}>★</span>
                 ))}
               </div>
-              <textarea placeholder={lang === "ar" ? "اكتب تجربتك..." : "Share your experience..."} value={comment} onChange={e => setComment(e.target.value)} rows={3}
+              <textarea placeholder={lang==="ar"?"اكتب تجربتك...":"Share your experience..."} value={comment} onChange={e => setComment(e.target.value)} rows={3}
                 style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1.5px solid #e2e8f0", fontSize: "14px", resize: "vertical", marginBottom: "12px", fontFamily: "Tajawal, sans-serif", outline: "none", boxSizing: "border-box" }}
-                onFocus={e => e.target.style.borderColor = "#22c55e"} onBlur={e => e.target.style.borderColor = "#e2e8f0"} />
+                onFocus={e => e.target.style.borderColor="#22c55e"} onBlur={e => e.target.style.borderColor="#e2e8f0"} />
               {reviewSent ? (
-                <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#16a34a", padding: "10px 16px", borderRadius: "8px", fontSize: "14px" }}>✓ {lang === "ar" ? "تم إرسال تقييمك!" : "Review submitted!"}</div>
+                <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#16a34a", padding: "10px 16px", borderRadius: "8px", fontSize: "14px" }}>✓ {lang==="ar"?"تم إرسال تقييمك!":"Review submitted!"}</div>
               ) : (
                 <button onClick={submitReview} disabled={!comment.trim()}
-                  style={{ padding: "10px 24px", background: comment.trim() ? "#22c55e" : "#f1f5f9", color: comment.trim() ? "white" : "#94a3b8", border: "none", borderRadius: "10px", fontSize: "14px", fontWeight: "600", cursor: comment.trim() ? "pointer" : "not-allowed", fontFamily: "Tajawal, sans-serif" }}>
-                  {lang === "ar" ? "إرسال التقييم" : "Submit Review"}
+                  style={{ padding: "10px 24px", background: comment.trim()?"#22c55e":"#f1f5f9", color: comment.trim()?"white":"#94a3b8", border: "none", borderRadius: "10px", fontSize: "14px", fontWeight: "600", cursor: comment.trim()?"pointer":"not-allowed", fontFamily: "Tajawal, sans-serif" }}>
+                  {lang==="ar"?"إرسال التقييم":"Submit Review"}
                 </button>
               )}
             </div>
           </div>
         )}
 
-        {/* ABOUT */}
+        {/* ── ABOUT ── معلومات المتجر الكاملة */}
         {activeTab === "about" && (
           <div style={{ maxWidth: "600px" }}>
             <div style={{ background: "white", borderRadius: "16px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
-              {[
-                { icon: "🏪", label: lang === "ar" ? "اسم المتجر" : "Store Name", value: store.name },
-                { icon: "📍", label: lang === "ar" ? "المدينة" : "City", value: store.city },
-                { icon: "📧", label: lang === "ar" ? "البريد الإلكتروني" : "Email", value: store.email },
-                { icon: "📦", label: lang === "ar" ? "عدد المنتجات" : "Products", value: `${products.length} ${lang === "ar" ? "منتج" : "products"}` },
-                { icon: "🗂️", label: lang === "ar" ? "عدد الفئات" : "Categories", value: `${mainCatsWithProducts.length} ${lang === "ar" ? "فئة رئيسية" : "main categories"}` },
-                { icon: "⭐", label: lang === "ar" ? "التقييم" : "Rating", value: avgRating > 0 ? `${avgRating.toFixed(1)} / 5 (${totalReviews} ${lang === "ar" ? "تقييم" : "reviews"})` : (lang === "ar" ? "لا يوجد تقييم بعد" : "No reviews yet") },
-              ].filter(r => r.value).map((row, i, arr) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: "16px", padding: "16px 24px", borderBottom: i < arr.length - 1 ? "1px solid #f8fafc" : "none", background: i % 2 === 0 ? "white" : "#fafafa" }}>
+              {aboutRows.map((row, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: "16px", padding: "16px 24px", borderBottom: i < aboutRows.length-1 ? "1px solid #f8fafc" : "none", background: i%2===0 ? "white" : "#fafafa" }}>
                   <div style={{ width: "38px", height: "38px", background: "#f0fdf4", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", flexShrink: 0 }}>{row.icon}</div>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <p style={{ fontSize: "11px", color: "#94a3b8", margin: 0, fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}>{row.label}</p>
-                    <p style={{ fontSize: "15px", color: "#0f172a", margin: "3px 0 0", fontWeight: "500" }}>{row.value}</p>
+                    {row.href ? (
+                      <a href={row.href} target="_blank" rel="noreferrer"
+                        style={{ fontSize: "15px", color: "#16a34a", margin: "3px 0 0", fontWeight: "500", textDecoration: "none", display: "block" }}>
+                        {row.value}
+                      </a>
+                    ) : (
+                      <p style={{ fontSize: "15px", color: "#0f172a", margin: "3px 0 0", fontWeight: "500" }}>{row.value}</p>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
           </div>
         )}
+
       </div>
     </div>
+    
   );
+  
 }
+
+
 
 export default StorePage;

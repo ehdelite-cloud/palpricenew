@@ -17,24 +17,30 @@ const menuItems = [
 ];
 
 function DashboardSidebar({ lang = "ar" }) {
-  const location = useLocation();
-  const navigate = useNavigate();
+  const location    = useLocation();
+  const navigate    = useNavigate();
   const dropdownRef = useRef(null);
 
-  const [storeName, setStoreName]   = useState("");
-  const [storeLogo, setStoreLogo]   = useState(null);
-  const [showMenu, setShowMenu]     = useState(false);
+  const [storeName,    setStoreName]    = useState("");
+  const [storeLogo,    setStoreLogo]    = useState(null);
+  const [showMenu,     setShowMenu]     = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
 
-  // token التاجر — نقرأه دايناميكياً مش مرة وحدة
-  const [storeToken, setStoreToken] = useState(localStorage.getItem("token"));
+  // ── إصلاح: نقرأ storeToken الصح ──
+  const [storeToken, setStoreToken] = useState(
+    () => localStorage.getItem("storeToken") || localStorage.getItem("token")
+  );
 
+  // ── إصلاح: state للإشعارات محلي في الـ sidebar ──
+  const [storeNotifs, setStoreNotifs] = useState([]);
+
+  // تحديث الـ token عند تغيير المسار
   useEffect(() => {
-    // نتأكد إن الـ token محدّث
-    const t = localStorage.getItem("token");
+    const t = localStorage.getItem("storeToken") || localStorage.getItem("token");
     if (t) setStoreToken(t);
   }, [location.pathname]);
 
+  // جلب بيانات المتجر
   useEffect(() => {
     const storeId = localStorage.getItem("storeId");
     if (!storeId) return;
@@ -46,29 +52,34 @@ function DashboardSidebar({ lang = "ar" }) {
         if (data?.logo) setStoreLogo(data.logo);
       })
       .catch(() => {
-        const cached = localStorage.getItem("storeName");
+        const cached     = localStorage.getItem("storeName");
         const cachedLogo = localStorage.getItem("storeLogo");
-        if (cached) setStoreName(cached);
+        if (cached)     setStoreName(cached);
         if (cachedLogo) setStoreLogo(cachedLogo);
       });
 
     fetch(`/api/stores/${storeId}/products`)
       .then(r => r.json())
       .then(data => {
-        if (Array.isArray(data)) setPendingCount(data.filter(p => p.status === "pending").length);
-      }).catch(() => {});
+        if (Array.isArray(data))
+          setPendingCount(data.filter(p => p.status === "pending").length);
+      })
+      .catch(() => {});
   }, [location.pathname]);
 
+  // close dropdown on outside click
   useEffect(() => {
     function handleClick(e) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setShowMenu(false);
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target))
+        setShowMenu(false);
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
   function handleLogout() {
-    ["token", "storeId", "storeName", "storeLogo"].forEach(k => localStorage.removeItem(k));
+    ["token", "storeToken", "storeId", "storeName", "storeLogo"]
+      .forEach(k => localStorage.removeItem(k));
     navigate("/store/login");
   }
 
@@ -91,7 +102,6 @@ function DashboardSidebar({ lang = "ar" }) {
       position: "sticky",
       top: 0,
       flexShrink: 0,
-      /* مهم — يسمح للـ dropdown بالظهور خارج الـ aside */
       overflow: "visible",
       zIndex: 50,
     }}>
@@ -104,19 +114,21 @@ function DashboardSidebar({ lang = "ar" }) {
           display: "flex", alignItems: "center",
           justifyContent: "space-between",
           marginBottom: "12px",
-          position: "relative",  /* مهم للـ dropdown */
+          position: "relative",
         }}>
           <Link to="/" style={{ fontSize: "18px", fontWeight: "800", color: "#22c55e", textDecoration: "none" }}>
             PalPrice
           </Link>
 
-          {/* الجرس — الـ dropdown بيظهر للأسفل داخل الصفحة */}
+          {/* ── إصلاح: تمرير notifications و setNotifications ── */}
           <div style={{ position: "relative", zIndex: 200 }}>
             <NotificationBell
               mode="store"
               token={storeToken}
               lang={lang}
               dropdownSide="right"
+              notifications={storeNotifs}
+              setNotifications={setStoreNotifs}
             />
           </div>
         </div>
@@ -131,7 +143,7 @@ function DashboardSidebar({ lang = "ar" }) {
               border: "1px solid #1e293b",
               background: showMenu ? "#1e293b" : "transparent",
               cursor: "pointer", transition: "all 0.2s",
-              fontFamily: "Tajawal, sans-serif"
+              fontFamily: "Tajawal, sans-serif",
             }}
             onMouseEnter={e => e.currentTarget.style.background = "#1e293b"}
             onMouseLeave={e => { if (!showMenu) e.currentTarget.style.background = "transparent"; }}
@@ -140,12 +152,10 @@ function DashboardSidebar({ lang = "ar" }) {
               width: "36px", height: "36px", borderRadius: "8px",
               background: "#1e293b", border: "1px solid #334155",
               display: "flex", alignItems: "center", justifyContent: "center",
-              overflow: "hidden", flexShrink: 0
+              overflow: "hidden", flexShrink: 0,
             }}>
               {logoSrc ? (
-                <img src={logoSrc} alt="logo"
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  onError={e => { e.target.style.display = "none"; }} />
+                <img src={logoSrc} alt="logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => e.target.style.display = "none"} />
               ) : (
                 <span style={{ fontSize: "18px" }}>🏪</span>
               )}
@@ -170,11 +180,11 @@ function DashboardSidebar({ lang = "ar" }) {
               background: "#1e293b", borderRadius: "10px",
               border: "1px solid #334155",
               boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
-              zIndex: 300, overflow: "hidden"
+              zIndex: 300, overflow: "hidden",
             }}>
               {[
                 { to: "/store/dashboard/profile", icon: "🏪", label: lang === "ar" ? "إعدادات المتجر" : "Store Settings" },
-                { to: "/", icon: "🌐", label: lang === "ar" ? "عرض الموقع" : "View Site" },
+                { to: "/",                         icon: "🌐", label: lang === "ar" ? "عرض الموقع"     : "View Site"      },
               ].map(item => (
                 <Link key={item.to} to={item.to} onClick={() => setShowMenu(false)}
                   style={{ display: "flex", alignItems: "center", gap: "10px", padding: "11px 14px", textDecoration: "none", color: "#94a3b8", fontSize: "13px", borderBottom: "1px solid #0f172a" }}

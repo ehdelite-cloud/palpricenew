@@ -1,12 +1,118 @@
 <!doctype html>
-<html lang="en">
+<html lang="ar" dir="rtl">
   <head>
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>palprice-frontend</title>
+
+    <!-- ══ الأيقونة ══ -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- ══ SEO الأساسي ══ -->
+    <title>PalPrice - مقارنة أسعار المنتجات في فلسطين</title>
+    <meta name="description" content="الموقع الفلسطيني الأول لمقارنة أسعار المنتجات بين المتاجر. وفّر أموالك واختر الأفضل. أسعار محدّثة لحظياً من مئات المتاجر الفلسطينية." />
+    <meta name="keywords" content="مقارنة أسعار, فلسطين, متاجر فلسطينية, أفضل سعر, تسوق, PalPrice, اسعار, عروض" />
+    <meta name="author" content="PalPrice" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#22c55e" />
+
+    <!-- ══ Open Graph (Facebook, WhatsApp, LinkedIn) ══ -->
+    <meta property="og:type"        content="website" />
+    <meta property="og:url"         content="https://palprice.ps/" />
+    <meta property="og:site_name"   content="PalPrice" />
+    <meta property="og:title"       content="PalPrice - مقارنة أسعار المنتجات في فلسطين" />
+    <meta property="og:description" content="الموقع الفلسطيني الأول لمقارنة الأسعار. وفّر أموالك واختر الأفضل من مئات المتاجر." />
+    <meta property="og:image"       content="https://palprice.ps/og-image.png" />
+    <meta property="og:image:width"  content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale"      content="ar_PS" />
+
+    <!-- ══ Twitter / X ══ -->
+    <meta name="twitter:card"        content="summary_large_image" />
+    <meta name="twitter:site"        content="@palprice_ps" />
+    <meta name="twitter:title"       content="PalPrice - مقارنة أسعار المنتجات في فلسطين" />
+    <meta name="twitter:description" content="الموقع الفلسطيني الأول لمقارنة الأسعار. وفّر أموالك واختر الأفضل." />
+    <meta name="twitter:image"       content="https://palprice.ps/og-image.png" />
+
+    <!-- ══ PWA Manifest ══ -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- ══ Canonical ══ -->
+    <link rel="canonical" href="https://palprice.ps/" />
+
+    <!-- ══ Structured Data (JSON-LD) ══ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "PalPrice",
+      "url": "https://palprice.ps",
+      "description": "الموقع الفلسطيني الأول لمقارنة أسعار المنتجات بين المتاجر",
+      "inLanguage": "ar",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://palprice.ps/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+
+    <!-- ══ Fonts — preconnect أولاً للسرعة ══ -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet" />
+
+    <!-- ══ Critical CSS — يمنع الوميض عند التحميل ══ -->
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      html { scroll-behavior: smooth; }
+      body {
+        font-family: 'Tajawal', 'Cairo', system-ui, sans-serif;
+        direction: rtl;
+        background: #f8fafc;
+        color: #0f172a;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      /* شاشة تحميل أولية */
+      #root:empty::after {
+        content: '';
+        display: block;
+        width: 36px;
+        height: 36px;
+        margin: 40vh auto 0;
+        border: 3px solid #e2e8f0;
+        border-top-color: #22c55e;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      /* skeleton animation */
+      @keyframes skeleton-loading {
+        0%   { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
+
+      /* products grid */
+      .products-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 16px;
+      }
+      @media (max-width: 640px) {
+        .products-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      }
+
+      /* scrollbar */
+      ::-webkit-scrollbar       { width: 5px; height: 5px; }
+      ::-webkit-scrollbar-track { background: #f1f5f9; }
+      ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+      ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+      /* selection */
+      ::selection { background: rgba(34,197,94,0.2); color: #15803d; }
+    </style>
   </head>
   <body>
     <div id="root"></div>

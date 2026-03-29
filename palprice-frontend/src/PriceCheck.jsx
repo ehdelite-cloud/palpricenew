@@ -44,9 +44,10 @@ export default function PriceCheck({ lang = "ar" }) {
   }
 
   function reset() {
-    setStep("search"); setQuery(""); setSuggestions([]);
-    setSelectedProduct(null); setPaidPrice(""); setResult(null);
-  }
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  setStep("search"); setQuery(""); setSuggestions([]);
+  setSelectedProduct(null); setPaidPrice(""); setResult(null);
+}
 
   // نص المشاركة
   function getShareText() {
@@ -285,13 +286,14 @@ export default function PriceCheck({ lang = "ar" }) {
                   <span style={{ fontSize: "20px" }}>📱</span>
                   {lang === "ar" ? "شارك على واتساب" : "Share on WhatsApp"}
                 </button>
-
-                {result.verdict === "overpaid" && result.product.id && (
-                  <Link to={`/product/${result.product.id}`}
-                    style={{ display: "block", width: "100%", padding: "13px", background: "linear-gradient(135deg, #22c55e, #16a34a)", color: "white", borderRadius: "12px", textDecoration: "none", fontSize: "15px", fontWeight: "700", textAlign: "center", boxSizing: "border-box" }}>
-                    🛒 {lang === "ar" ? "شوف أفضل الأسعار الحالية" : "See Current Best Prices"}
-                  </Link>
-                )}
+                <button onClick={() => {
+  const url = encodeURIComponent(window.location.href);
+  const text = encodeURIComponent(getShareText());
+  window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}&quote=${text}`, "_blank");
+}}
+  style={{ width: "100%", padding: "12px", background: "#1877f2", color: "white", border: "none", borderRadius: "12px", fontSize: "14px", fontWeight: "700", cursor: "pointer", fontFamily: "Tajawal, sans-serif", marginTop: "8px" }}>
+  📘 {lang === "ar" ? "شارك على فيسبوك" : "Share on Facebook"}
+</button>
 
                 <button onClick={reset}
                   style={{ width: "100%", padding: "13px", background: "white", color: "#475569", border: "1.5px solid #e2e8f0", borderRadius: "12px", fontSize: "14px", fontWeight: "600", cursor: "pointer", fontFamily: "Tajawal, sans-serif" }}>
@@ -305,17 +307,23 @@ export default function PriceCheck({ lang = "ar" }) {
                   <h3 style={{ fontSize: "15px", fontWeight: "700", color: "#0f172a", marginBottom: "14px", margin: "0 0 14px" }}>
                     🏪 {lang === "ar" ? "أسعار المتاجر الآن" : "Current Store Prices"}
                   </h3>
-                  {result.prices.map((p, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < result.prices.length - 1 ? "1px solid #f8fafc" : "none" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        {i === 0 && <span style={{ background: "#16a34a", color: "white", fontSize: "9px", fontWeight: "700", padding: "2px 6px", borderRadius: "4px" }}>الأرخص</span>}
-                        <span style={{ fontSize: "14px", color: "#0f172a", fontWeight: "500" }}>{p.store_name}</span>
-                      </div>
-                      <span style={{ fontSize: "16px", fontWeight: "800", color: i === 0 ? "#16a34a" : "#0f172a", fontFamily: "Cairo, sans-serif" }}>
-                        {Number(p.price).toLocaleString()} ₪
-                      </span>
-                    </div>
-                  ))}
+              {result.prices.map((p, i) => (
+  <Link key={i}
+    to={p.store_id ? `/store/${p.store_id}` : `/stores`}
+    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 8px", borderBottom: i < result.prices.length - 1 ? "1px solid #f8fafc" : "none", textDecoration: "none", color: "inherit", borderRadius: "8px", margin: "0 -8px", transition: "background 0.15s" }}
+    onMouseEnter={e => e.currentTarget.style.background = "#f8fafc"}
+    onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      {i === 0 && <span style={{ background: "#16a34a", color: "white", fontSize: "9px", fontWeight: "700", padding: "2px 6px", borderRadius: "4px" }}>الأرخص</span>}
+      <span style={{ fontSize: "14px", color: i === 0 ? "#16a34a" : "#0f172a", fontWeight: "600" }}>
+        {p.store_name} ←
+      </span>
+    </div>
+    <span style={{ fontSize: "16px", fontWeight: "800", color: i === 0 ? "#16a34a" : "#0f172a", fontFamily: "Cairo, sans-serif" }}>
+      {Number(p.price).toLocaleString()} ₪
+    </span>
+  </Link>
+))}
                 </div>
               )}
             </div>

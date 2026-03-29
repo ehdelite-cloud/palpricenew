@@ -9,13 +9,15 @@
 /* ================= CSS VARIABLES ================= */
 
 :root {
-  --green:          #16a34a;
-  --green-dark:     #14532d;
-  --green-mid:      #22c55e;
-  --green-light:    #dcfce7;
-  --green-glow:     #22c55e22;
-  --gold:           #d97706;
-  --gold-light:     #fef3c7;
+  --green: #15803d;
+  --green-dark: #14532d;
+  --green-mid: #4ade80;
+  --green-light: #f0fdf4;
+  --green-glow: #4ade8022;
+  --olive: #6b7c3a;
+  --olive-light: #f7f8f0;
+  --gold: #b45309;
+  --gold-light: #fef3c7;
   --red:            #dc2626;
   --bg:             #f8fafc;
   --bg-card:        #ffffff;
@@ -1155,6 +1157,7 @@ button:active { transform: translateY(0); }
     scroll-snap-align: start;
   }
   
+
   /* جعل العروض (Price Drops) قابلة للسحب أفقياً */
   .mobile-deals-grid {
     display: flex !important;
@@ -1264,4 +1267,56 @@ button:active { transform: translateY(0); }
     padding-left: 12px !important;
     padding-right: 12px !important;
   }
+}
+
+@media (max-width: 768px) {
+  .cats-main-row {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    justify-content: flex-start !important;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .cats-main-row::-webkit-scrollbar { display: none; }
+}
+
+
+
+@media (max-width: 768px) {
+  .offers-list > div {
+    margin: 0 !important;
+  }
+
+  .offers-list > div > div:first-child {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .offers-list > div > div:first-child > div:last-child {
+    width: 100% !important;
+    text-align: right !important;
+    margin-top: 4px;
+  }
+
+  .offers-list > div > div:last-child {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: "12px" !important;
+  }
+
+  .offers-list > div > div:last-child > div {
+    width: 100% !important;
+    justify-content: flex-start !important;
+  }
+
+  .offers-list > div > div:last-child > a:last-of-type {
+    width: 100% !important;
+    text-align: center !important;
+    display: block !important;
+    padding: 12px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .product-page-main { grid-template-columns: 1fr !important; }
 }

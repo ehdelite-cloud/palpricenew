@@ -3,17 +3,17 @@ import DashboardSidebar from "../../components/DashboardSidebar";
 
 function StoreProfile({ lang = "ar" }) {
   const [store, setStore] = useState(null);
-  const [form, setForm] = useState({ name: "", city: "", email: "" });
+  const [form, setForm] = useState({
+    name: "", city: "", email: "", phone: "",
+    whatsapp: "", instagram: "", facebook: "", website: "", address: ""
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
-
-  // شعار المتجر
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const logoRef = useRef(null);
-
   const storeId = localStorage.getItem("storeId");
 
   useEffect(() => {
@@ -22,7 +22,17 @@ function StoreProfile({ lang = "ar" }) {
       .then(res => res.json())
       .then(data => {
         setStore(data);
-        setForm({ name: data.name || "", city: data.city || "", email: data.email || "" });
+        setForm({
+          name: data.name || "",
+          city: data.city || "",
+          email: data.email || "",
+          phone: data.phone || "",
+          whatsapp: data.whatsapp || "",
+          instagram: data.instagram || "",
+          facebook: data.facebook || "",
+          website: data.website || "",
+          address: data.address || "",
+        });
         if (data.logo) setLogoPreview(data.logo);
         setLoading(false);
       })
@@ -37,73 +47,64 @@ function StoreProfile({ lang = "ar" }) {
   }
 
   async function handleSave() {
-    setSaving(true);
-    setSuccess(false);
-
+    setSaving(true); setSuccess(false);
     try {
-      // رفع الشعار أولاً إذا في
       let logoUrl = store?.logo || null;
       if (logoFile) {
         setUploadingLogo(true);
         const formData = new FormData();
         formData.append("image", logoFile);
-        const uploadRes = await fetch(`/api/stores/${storeId}/logo`, {
-          method: "POST",
-          body: formData
-        });
-        if (uploadRes.ok) {
-          const uploadData = await uploadRes.json();
-          logoUrl = uploadData.logo;
-        }
+        const uploadRes = await fetch(`/api/stores/${storeId}/logo`, { method: "POST", body: formData });
+        if (uploadRes.ok) { const d = await uploadRes.json(); logoUrl = d.logo; }
         setUploadingLogo(false);
       }
-
-      // حفظ البيانات
       const res = await fetch(`/api/stores/${storeId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...form, logo: logoUrl })
       });
-
       if (res.ok) {
         const updated = await res.json();
         setStore(updated.store);
-        // حفظ اسم المتجر في localStorage عشان الـ Sidebar
         localStorage.setItem("storeName", form.name);
         if (logoUrl) localStorage.setItem("storeLogo", logoUrl);
         setSuccess(true);
         setLogoFile(null);
         setTimeout(() => setSuccess(false), 3000);
       }
-    } catch (err) {
-      alert(lang === "ar" ? "حدث خطأ، حاول مجدداً" : "Something went wrong");
-    }
+    } catch { alert(lang === "ar" ? "حدث خطأ، حاول مجدداً" : "Something went wrong"); }
     setSaving(false);
   }
 
   const inputStyle = {
     width: "100%", padding: "10px 14px", borderRadius: "8px",
-    border: "1px solid #e2e8f0", fontSize: "14px", boxSizing: "border-box",
-    background: "#f8fafc", color: "#0f172a", outline: "none",
-    fontFamily: "Tajawal, sans-serif"
+    border: "1.5px solid #e2e8f0", fontSize: "14px", boxSizing: "border-box",
+    background: "#f8fafc", color: "#0f172a", outline: "none", fontFamily: "Tajawal, sans-serif",
+    transition: "border-color 0.2s",
   };
+  const labelStyle = { display: "block", fontSize: "12px", fontWeight: "700", color: "#64748b", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.5px" };
 
-  const labelStyle = {
-    display: "block", fontSize: "13px", fontWeight: "600",
-    color: "#475569", marginBottom: "6px"
-  };
+  const Field = ({ label, icon, value, onChange, type = "text", placeholder = "" }) => (
+    <div style={{ marginBottom: "16px" }}>
+      <label style={labelStyle}>{icon} {label}</label>
+      <input type={type} value={value} onChange={onChange} placeholder={placeholder}
+        style={inputStyle}
+        onFocus={e => e.target.style.borderColor = "#4ade80"}
+        onBlur={e => e.target.style.borderColor = "#e2e8f0"} />
+    </div>
+  );
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#f8fafc" }}>
       <DashboardSidebar lang={lang} />
-      <main style={{ flex: 1, padding: "40px" }}>
+      <main style={{ flex: 1, padding: "40px", maxWidth: "900px" }}>
 
         <div style={{ marginBottom: "32px" }}>
-          <h1 style={{ fontSize: "24px", fontWeight: "700", color: "#0f172a", margin: 0 }}>
-            🏪 {lang === "ar" ? "الملف الشخصي" : "Store Profile"}
+          <h1 style={{ fontSize: "22px", fontWeight: "700", color: "#0f172a", margin: 0 }}>
+            🏪 {lang === "ar" ? "الملف الشخصي للمتجر" : "Store Profile"}
           </h1>
           <p style={{ color: "#64748b", marginTop: "4px", fontSize: "14px" }}>
-            {lang === "ar" ? "تعديل معلومات متجرك وشعاره" : "Edit store info and logo"}
+            {lang === "ar" ? "المعلومات تظهر للعملاء في صفحة الأسعار" : "Info shown to customers on price pages"}
           </p>
         </div>
 
@@ -114,95 +115,67 @@ function StoreProfile({ lang = "ar" }) {
             {lang === "ar" ? "يرجى تسجيل الدخول أولاً" : "Please login first"}
           </div>
         ) : (
-          <div style={{ maxWidth: "560px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
 
-            {/* Store Logo Card */}
-            <div style={{ background: "white", borderRadius: "12px", border: "1px solid #e2e8f0", padding: "28px", marginBottom: "20px" }}>
-              <h3 style={{ fontSize: "15px", fontWeight: "600", color: "#0f172a", marginBottom: "20px" }}>
-                {lang === "ar" ? "شعار المتجر" : "Store Logo"}
+            {/* الشعار */}
+            <div style={{ background: "white", borderRadius: "16px", border: "1.5px solid #e2e8f0", padding: "24px", gridColumn: "1 / -1" }}>
+              <h3 style={{ fontSize: "14px", fontWeight: "700", color: "#0f172a", marginBottom: "20px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                🖼️ {lang === "ar" ? "شعار المتجر" : "Store Logo"}
               </h3>
-
               <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
-                {/* معاينة الشعار */}
-                <div style={{
-                  width: "90px", height: "90px", borderRadius: "16px",
-                  background: "#f1f5f9", border: "2px solid #e2e8f0",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  overflow: "hidden", flexShrink: 0
-                }}>
-                  {logoPreview ? (
-                    <img src={logoPreview} alt="logo"
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      onError={e => { e.target.style.display = "none"; }}
-                    />
-                  ) : (
-                    <span style={{ fontSize: "36px" }}>🏪</span>
-                  )}
+                <div style={{ width: "80px", height: "80px", borderRadius: "16px", background: "#f1f5f9", border: "2px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+                  {logoPreview
+                    ? <img src={logoPreview.startsWith("/") ? `/api${logoPreview}` : logoPreview} alt="logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => e.target.style.display = "none"} />
+                    : <span style={{ fontSize: "32px" }}>🏪</span>}
                 </div>
-
                 <div>
-                  <label style={{
-                    display: "inline-block", padding: "9px 18px",
-                    background: "#f1f5f9", border: "1px solid #e2e8f0",
-                    borderRadius: "8px", cursor: "pointer", fontSize: "14px",
-                    color: "#475569", fontWeight: "500", marginBottom: "8px"
-                  }}>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "8px 16px", background: "#f1f5f9", border: "1.5px solid #e2e8f0", borderRadius: "8px", cursor: "pointer", fontSize: "13px", color: "#475569", fontWeight: "600" }}>
                     📁 {lang === "ar" ? "اختر شعار" : "Choose Logo"}
-                    <input ref={logoRef} type="file" accept="image/*"
-                      onChange={handleLogoSelect} style={{ display: "none" }} />
+                    <input ref={logoRef} type="file" accept="image/*" onChange={handleLogoSelect} style={{ display: "none" }} />
                   </label>
-                  <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>
-                    {lang === "ar" ? "JPG, PNG, WebP — حد أقصى 2MB" : "JPG, PNG, WebP — max 2MB"}
-                  </p>
-                  {logoFile && (
-                    <p style={{ fontSize: "12px", color: "#22c55e", margin: "4px 0 0", fontWeight: "600" }}>
-                      ✓ {logoFile.name}
-                    </p>
-                  )}
+                  <p style={{ fontSize: "11px", color: "#94a3b8", margin: "6px 0 0" }}>JPG, PNG, WebP — {lang === "ar" ? "حد أقصى 2MB" : "max 2MB"}</p>
+                  {logoFile && <p style={{ fontSize: "12px", color: "#15803d", margin: "4px 0 0", fontWeight: "600" }}>✓ {logoFile.name}</p>}
                 </div>
               </div>
             </div>
 
-            {/* Form */}
-            <div style={{ background: "white", borderRadius: "12px", border: "1px solid #e2e8f0", padding: "28px" }}>
-              <h3 style={{ fontSize: "15px", fontWeight: "600", color: "#0f172a", marginBottom: "20px" }}>
-                {lang === "ar" ? "بيانات المتجر" : "Store Details"}
+            {/* معلومات أساسية */}
+            <div style={{ background: "white", borderRadius: "16px", border: "1.5px solid #e2e8f0", padding: "24px" }}>
+              <h3 style={{ fontSize: "14px", fontWeight: "700", color: "#0f172a", marginBottom: "20px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                📋 {lang === "ar" ? "معلومات أساسية" : "Basic Info"}
               </h3>
+              <Field label={lang === "ar" ? "اسم المتجر" : "Store Name"} icon="🏪" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+              <Field label={lang === "ar" ? "المدينة" : "City"} icon="📍" value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} placeholder={lang === "ar" ? "مثال: رام الله" : "e.g. Ramallah"} />
+              <Field label={lang === "ar" ? "العنوان التفصيلي" : "Address"} icon="🗺️" value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder={lang === "ar" ? "الشارع والحي" : "Street and neighborhood"} />
+              <Field label={lang === "ar" ? "البريد الإلكتروني" : "Email"} icon="📧" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
+            </div>
 
+            {/* معلومات التواصل */}
+            <div style={{ background: "white", borderRadius: "16px", border: "1.5px solid #e2e8f0", padding: "24px" }}>
+              <h3 style={{ fontSize: "14px", fontWeight: "700", color: "#0f172a", marginBottom: "20px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                📞 {lang === "ar" ? "وسائل التواصل" : "Contact Info"}
+              </h3>
+              <Field label={lang === "ar" ? "رقم الهاتف" : "Phone"} icon="📞" type="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="+970 59..." />
+              <Field label="WhatsApp" icon="💬" type="tel" value={form.whatsapp} onChange={e => setForm({ ...form, whatsapp: e.target.value })} placeholder="+970 59..." />
+              <Field label="Instagram" icon="📸" value={form.instagram} onChange={e => setForm({ ...form, instagram: e.target.value })} placeholder="username" />
+              <Field label="Facebook" icon="👍" value={form.facebook} onChange={e => setForm({ ...form, facebook: e.target.value })} placeholder="page-name" />
+              <Field label={lang === "ar" ? "الموقع الإلكتروني" : "Website"} icon="🌐" value={form.website} onChange={e => setForm({ ...form, website: e.target.value })} placeholder="https://..." />
+            </div>
+
+            {/* زر الحفظ + رسالة نجاح */}
+            <div style={{ gridColumn: "1 / -1" }}>
               {success && (
-                <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#16a34a", padding: "12px 16px", borderRadius: "8px", fontSize: "14px", marginBottom: "20px" }}>
-                  ✓ {lang === "ar" ? "تم الحفظ بنجاح" : "Saved successfully"}
+                <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", padding: "12px 16px", borderRadius: "10px", fontSize: "14px", marginBottom: "16px", fontWeight: "600" }}>
+                  ✅ {lang === "ar" ? "تم الحفظ بنجاح! المعلومات ستظهر للعملاء في صفحة الأسعار." : "Saved! Info will appear to customers on price pages."}
                 </div>
               )}
-
-              <div style={{ marginBottom: "16px" }}>
-                <label style={labelStyle}>{lang === "ar" ? "اسم المتجر" : "Store Name"}</label>
-                <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={inputStyle} />
-              </div>
-
-              <div style={{ marginBottom: "16px" }}>
-                <label style={labelStyle}>{lang === "ar" ? "المدينة" : "City"}</label>
-                <input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} style={inputStyle} />
-              </div>
-
-              <div style={{ marginBottom: "24px" }}>
-                <label style={labelStyle}>{lang === "ar" ? "البريد الإلكتروني" : "Email"}</label>
-                <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} style={inputStyle} />
-              </div>
-
-              <button onClick={handleSave} disabled={saving || uploadingLogo} style={{
-                padding: "11px 28px", background: saving ? "#86efac" : "#22c55e",
-                color: "white", border: "none", borderRadius: "8px",
-                fontSize: "14px", fontWeight: "600", cursor: saving ? "not-allowed" : "pointer"
-              }}>
-                {uploadingLogo
-                  ? (lang === "ar" ? "جاري رفع الشعار..." : "Uploading logo...")
-                  : saving
-                    ? (lang === "ar" ? "جاري الحفظ..." : "Saving...")
-                    : (lang === "ar" ? "حفظ التغييرات" : "Save Changes")}
+              <button onClick={handleSave} disabled={saving || uploadingLogo}
+                style={{ padding: "12px 32px", background: saving ? "#86efac" : "#15803d", color: "white", border: "none", borderRadius: "10px", fontSize: "14px", fontWeight: "700", cursor: saving ? "not-allowed" : "pointer", fontFamily: "Tajawal, sans-serif", boxShadow: "0 4px 12px rgba(21,128,61,0.25)" }}>
+                {uploadingLogo ? (lang === "ar" ? "⏳ جاري رفع الشعار..." : "⏳ Uploading...")
+                  : saving ? (lang === "ar" ? "⏳ جاري الحفظ..." : "⏳ Saving...")
+                  : (lang === "ar" ? "💾 حفظ التغييرات" : "💾 Save Changes")}
               </button>
             </div>
-
           </div>
         )}
       </main>

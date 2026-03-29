@@ -21,13 +21,16 @@ export default function CampaignsPage({ lang = "ar" }) {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading]     = useState(true);
   const [copied, setCopied]       = useState(null);
+  const [filter, setFilter] = useState("active"); // "active" | "all"
 
   useEffect(() => {
     fetch("/api/campaigns/active")
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setCampaigns(data); setLoading(false); })
       .catch(() => setLoading(false));
+    
   }, []);
+  
 
   function copyCoupon(code, id) {
     navigator.clipboard.writeText(code);
@@ -56,6 +59,14 @@ export default function CampaignsPage({ lang = "ar" }) {
           </p>
         </div>
       </div>
+      <div style={{ display: "flex", justifyContent: "center", gap: "8px", padding: "20px 24px 0" }}>
+  {["active","all"].map(f => (
+    <button key={f} onClick={() => setFilter(f)}
+      style={{ padding: "8px 20px", borderRadius: "99px", border: "none", cursor: "pointer", fontSize: "13px", fontWeight: "700", fontFamily: "Tajawal, sans-serif", background: filter === f ? "#8b5cf6" : "#f1f5f9", color: filter === f ? "white" : "#475569" }}>
+      {f === "active" ? (lang === "ar" ? "🔥 النشطة" : "🔥 Active") : (lang === "ar" ? "📋 الكل" : "📋 All")}
+    </button>
+  ))}
+</div>
 
       {/* Content */}
       <div style={{ maxWidth: "1000px", margin: "auto", padding: "36px 24px 60px" }}>

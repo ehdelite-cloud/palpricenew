@@ -73,6 +73,8 @@ export default function StoreProducts({ lang = "ar" }) {
   const [products, setProducts]       = useState([]);
   const [loading, setLoading]         = useState(true);
   const [search, setSearch]           = useState("");
+  const [page, setPage]   = useState(1);
+const PER_PAGE = 20;
   const [editingPrice, setEditingPrice] = useState(null);
   const [newPrice, setNewPrice]       = useState("");
   const [savingPrice, setSavingPrice] = useState(false);
@@ -96,6 +98,8 @@ export default function StoreProducts({ lang = "ar" }) {
     (p.variant_label || p.name || "").toLowerCase().includes(search.toLowerCase()) ||
     (p.brand || "").toLowerCase().includes(search.toLowerCase())
   );
+  const totalPages  = Math.ceil(filtered.length / PER_PAGE);
+const paginated   = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   function deleteProduct(id) {
     if (!window.confirm(lang === "ar" ? "هل أنت متأكد من الحذف؟" : "Delete?")) return;
@@ -244,7 +248,7 @@ export default function StoreProducts({ lang = "ar" }) {
             <h2 style={{ fontSize: "14px", fontWeight: "600", color: "#0f172a", margin: 0 }}>
               {lang === "ar" ? "المنتجات المعتمدة" : "Approved Products"} ({approved.length})
             </h2>
-            <input type="text" placeholder={lang === "ar" ? "بحث..." : "Search..."} value={search} onChange={e => setSearch(e.target.value)}
+            <input type="text" placeholder={lang === "ar" ? "بحث..." : "Search..."} onChange={e => { setSearch(e.target.value); setPage(1); }}
               style={{ padding: "7px 12px", borderRadius: "7px", border: "1px solid #e2e8f0", fontSize: "12px", fontFamily: "Tajawal, sans-serif", outline: "none", width: "200px" }} />
           </div>
 
@@ -267,15 +271,36 @@ export default function StoreProducts({ lang = "ar" }) {
                       <div style={{ fontSize: "32px", marginBottom: "8px" }}>📭</div>
                       {approved.length === 0 ? (lang === "ar" ? "لا توجد منتجات معتمدة" : "No approved products") : (lang === "ar" ? "لا توجد نتائج" : "No results")}
                     </td></tr>
-                  : filtered.map(p => <ProductRow key={p.id} p={p} />)
+                  : paginated.map(p => <ProductRow key={p.id} p={p} />)
               }
             </tbody>
           </table>
           {!loading && filtered.length > 0 && (
-            <p style={{ textAlign: "center", padding: "10px", fontSize: "11px", color: "#94a3b8" }}>
-              💡 {lang === "ar" ? "اضغط على السعر لتعديله" : "Click price to edit"}
-            </p>
-          )}
+  <div style={{ padding: "12px 16px", borderTop: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
+    <p style={{ fontSize: "11px", color: "#94a3b8", margin: 0 }}>
+      💡 {lang === "ar" ? "اضغط على السعر لتعديله" : "Click price to edit"}
+      {" · "}{filtered.length} {lang === "ar" ? "منتج" : "products"}
+    </p>
+    {totalPages > 1 && (
+      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+        <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+          style={{ padding: "4px 10px", borderRadius: "6px", border: "1px solid #e2e8f0", background: page === 1 ? "#f8fafc" : "white", cursor: page === 1 ? "not-allowed" : "pointer", fontSize: "13px", color: page === 1 ? "#94a3b8" : "#0f172a" }}>
+          {lang === "ar" ? "→" : "←"}
+        </button>
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
+          <button key={n} onClick={() => setPage(n)}
+            style={{ padding: "4px 10px", borderRadius: "6px", border: "1px solid #e2e8f0", background: page === n ? "#0f172a" : "white", color: page === n ? "white" : "#0f172a", cursor: "pointer", fontSize: "13px", fontWeight: page === n ? "700" : "400" }}>
+            {n}
+          </button>
+        ))}
+        <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+          style={{ padding: "4px 10px", borderRadius: "6px", border: "1px solid #e2e8f0", background: page === totalPages ? "#f8fafc" : "white", cursor: page === totalPages ? "not-allowed" : "pointer", fontSize: "13px", color: page === totalPages ? "#94a3b8" : "#0f172a" }}>
+          {lang === "ar" ? "←" : "→"}
+        </button>
+      </div>
+    )}
+  </div>
+)}
         </div>
       </main>
     </div>

@@ -3,22 +3,29 @@ import { useParams, useNavigate } from "react-router-dom";
 import DashboardSidebar from "../../components/DashboardSidebar";
 
 const STATUS_CONFIG = {
-  open:        { label: "مفتوحة",         color: "#3b82f6", bg: "#eff6ff", border: "#bfdbfe" },
-  in_progress: { label: "قيد المتابعة",   color: "#f59e0b", bg: "#fffbeb", border: "#fde68a" },
-  closed:      { label: "مغلقة",          color: "#64748b", bg: "#f8fafc", border: "#e2e8f0" },
+  open:        { label: "مفتوحة",        color: "#3b82f6", bg: "#eff6ff", border: "#bfdbfe" },
+  in_progress: { label: "قيد المتابعة",  color: "#f59e0b", bg: "#fffbeb", border: "#fde68a" },
+  closed:      { label: "مغلقة",         color: "#64748b", bg: "#f8fafc", border: "#e2e8f0" },
 };
 
-function TicketChat({ ticketId, lang }) {
-  const token = localStorage.getItem("token");
-  const [ticket, setTicket] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [reply, setReply] = useState("");
-  const [sending, setSending] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const bottomRef = useRef(null);
-  const navigate = useNavigate();
+/* ── يقرأ الـ token الصحيح للمتجر ── */
+function getStoreToken() {
+  return localStorage.getItem("storeToken") || localStorage.getItem("token");
+}
 
-  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+/* ══════════════════════════════════════
+   TicketChat — تفاصيل تذكرة واحدة
+══════════════════════════════════════ */
+function TicketChat({ ticketId, lang }) {
+  const token    = getStoreToken();   // ← إصلاح
+  const navigate = useNavigate();
+  const [ticket,   setTicket]   = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [reply,    setReply]    = useState("");
+  const [sending,  setSending]  = useState(false);
+  const [loading,  setLoading]  = useState(true);
+  const bottomRef = useRef(null);
+  const headers   = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
   useEffect(() => { fetchTicket(); }, [ticketId]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
@@ -26,11 +33,11 @@ function TicketChat({ ticketId, lang }) {
   async function fetchTicket() {
     setLoading(true);
     try {
-      const res = await fetch(`/api/tickets/${ticketId}/store`, { headers });
+      const res  = await fetch(`/api/tickets/${ticketId}/store`, { headers });
       const data = await res.json();
       setTicket(data.ticket);
       setMessages(data.messages || []);
-    } catch { }
+    } catch {}
     setLoading(false);
   }
 
@@ -40,10 +47,10 @@ function TicketChat({ ticketId, lang }) {
     try {
       const res = await fetch(`/api/tickets/${ticketId}/reply/store`, {
         method: "POST", headers,
-        body: JSON.stringify({ message: reply.trim() })
+        body: JSON.stringify({ message: reply.trim() }),
       });
       if (res.ok) { setReply(""); await fetchTicket(); }
-    } catch { }
+    } catch {}
     setSending(false);
   }
 
@@ -95,17 +102,8 @@ function TicketChat({ ticketId, lang }) {
                   <span style={{ fontSize: "11px", color: "#94a3b8" }}>{msg.sender_name}</span>
                   <span style={{ fontSize: "11px", color: "#cbd5e1" }}>{new Date(msg.created_at).toLocaleString("ar-PS")}</span>
                 </div>
-                <div style={{
-                  padding: "12px 16px", borderRadius: "14px",
-                  borderBottomRightRadius: isStore ? "4px" : "14px",
-                  borderBottomLeftRadius: isStore ? "14px" : "4px",
-                  background: isStore ? "#0f172a" : "white",
-                  border: isStore ? "none" : "1px solid #e2e8f0",
-                  boxShadow: "0 1px 4px rgba(0,0,0,0.06)"
-                }}>
-                  <p style={{ margin: 0, fontSize: "14px", color: isStore ? "white" : "#0f172a", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
-                    {msg.message}
-                  </p>
+                <div style={{ padding: "12px 16px", borderRadius: "14px", borderBottomRightRadius: isStore ? "4px" : "14px", borderBottomLeftRadius: isStore ? "14px" : "4px", background: isStore ? "#0f172a" : "white", border: isStore ? "none" : "1px solid #e2e8f0", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+                  <p style={{ margin: 0, fontSize: "14px", color: isStore ? "white" : "#0f172a", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{msg.message}</p>
                 </div>
               </div>
               {isStore && (
@@ -120,13 +118,16 @@ function TicketChat({ ticketId, lang }) {
       {/* Input */}
       {ticket.status !== "closed" ? (
         <div style={{ background: "white", borderRadius: "12px", border: "1px solid #e2e8f0", padding: "12px 14px", display: "flex", gap: "10px" }}>
-          <textarea value={reply} onChange={e => setReply(e.target.value)}
+          <textarea
+            value={reply}
+            onChange={e => setReply(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendReply(); } }}
             placeholder={lang === "ar" ? "اكتب ردك هنا... (Enter للإرسال)" : "Type your reply... (Enter to send)"}
             rows={2}
             style={{ flex: 1, padding: "10px 14px", borderRadius: "10px", border: "1.5px solid #e2e8f0", fontSize: "14px", fontFamily: "Tajawal, sans-serif", outline: "none", resize: "none" }}
             onFocus={e => e.target.style.borderColor = "#22c55e"}
-            onBlur={e => e.target.style.borderColor = "#e2e8f0"} />
+            onBlur={e => e.target.style.borderColor = "#e2e8f0"}
+          />
           <button onClick={sendReply} disabled={sending || !reply.trim()}
             style={{ padding: "10px 20px", background: reply.trim() ? "#22c55e" : "#f1f5f9", color: reply.trim() ? "white" : "#94a3b8", border: "none", borderRadius: "10px", cursor: reply.trim() ? "pointer" : "not-allowed", fontSize: "14px", fontWeight: "700", fontFamily: "Tajawal, sans-serif", alignSelf: "flex-end" }}>
             {sending ? "⏳" : (lang === "ar" ? "إرسال" : "Send")}
@@ -141,52 +142,64 @@ function TicketChat({ ticketId, lang }) {
   );
 }
 
+/* ══════════════════════════════════════
+   StoreTickets — قائمة التذاكر
+══════════════════════════════════════ */
 function StoreTickets({ lang = "ar" }) {
   const { ticketId } = useParams();
-  const navigate = useNavigate();
-  const token = localStorage.getItem("token");
-  const headers = { Authorization: `Bearer ${token}` };
+  const navigate     = useNavigate();
+  const token        = getStoreToken();   // ← إصلاح
+  const headers      = { Authorization: `Bearer ${token}` };
 
-  const [tickets, setTickets] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showNew, setShowNew] = useState(false);
-  const [subject, setSubject] = useState("");
-  const [message, setMessage] = useState("");
+  const [tickets,  setTickets]  = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [showNew,  setShowNew]  = useState(false);
+  const [subject,  setSubject]  = useState("");
+  const [message,  setMessage]  = useState("");
   const [creating, setCreating] = useState(false);
+  const [error,    setError]    = useState("");
 
   useEffect(() => { fetchTickets(); }, []);
 
   async function fetchTickets() {
     try {
-      const res = await fetch("/api/tickets/store", { headers });
+      const res  = await fetch("/api/tickets/store", { headers });
       const data = await res.json();
       if (Array.isArray(data)) setTickets(data);
-    } catch { }
+      else if (data.error === "Invalid token" || data.error === "No token") {
+        setError(lang === "ar" ? "انتهت جلستك — سجّل دخول مجدداً" : "Session expired — please login again");
+      }
+    } catch {}
     setLoading(false);
   }
 
   async function createTicket() {
     if (!subject.trim() || !message.trim()) return;
     setCreating(true);
+    setError("");
     try {
-      const res = await fetch("/api/tickets", {
+      const res  = await fetch("/api/tickets", {
         method: "POST",
         headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ subject: subject.trim(), message: message.trim() })
+        body: JSON.stringify({ subject: subject.trim(), message: message.trim() }),
       });
       const data = await res.json();
       if (data.ticket) {
         setShowNew(false); setSubject(""); setMessage("");
         navigate(`/store/dashboard/tickets/${data.ticket.id}`);
+      } else {
+        setError(data.error || (lang === "ar" ? "حدث خطأ" : "An error occurred"));
       }
-    } catch { }
+    } catch {
+      setError(lang === "ar" ? "تعذر الإرسال — تحقق من اتصالك" : "Failed to send — check your connection");
+    }
     setCreating(false);
   }
 
   const inp = {
     width: "100%", padding: "10px 14px", borderRadius: "8px",
     border: "1.5px solid #e2e8f0", fontSize: "14px",
-    fontFamily: "Tajawal, sans-serif", outline: "none", boxSizing: "border-box"
+    fontFamily: "Tajawal, sans-serif", outline: "none", boxSizing: "border-box",
   };
 
   return (
@@ -198,6 +211,7 @@ function StoreTickets({ lang = "ar" }) {
           <TicketChat ticketId={ticketId} lang={lang} />
         ) : (
           <>
+            {/* Header */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
               <div>
                 <h1 style={{ fontSize: "22px", fontWeight: "700", color: "#0f172a", margin: 0 }}>
@@ -207,12 +221,20 @@ function StoreTickets({ lang = "ar" }) {
                   {lang === "ar" ? "تواصل مع إدارة PalPrice" : "Contact PalPrice support"}
                 </p>
               </div>
-              <button onClick={() => setShowNew(true)}
+              <button onClick={() => { setShowNew(true); setError(""); }}
                 style={{ padding: "10px 20px", background: "#0f172a", color: "white", border: "none", borderRadius: "10px", cursor: "pointer", fontSize: "14px", fontWeight: "600", fontFamily: "Tajawal, sans-serif" }}>
                 + {lang === "ar" ? "تذكرة جديدة" : "New Ticket"}
               </button>
             </div>
 
+            {/* خطأ */}
+            {error && (
+              <div style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", padding: "12px 16px", borderRadius: "10px", fontSize: "13px", marginBottom: "16px" }}>
+                ⚠️ {error}
+              </div>
+            )}
+
+            {/* فورم تذكرة جديدة */}
             {showNew && (
               <div style={{ background: "white", borderRadius: "14px", border: "1.5px solid #22c55e", padding: "24px", marginBottom: "20px" }}>
                 <h3 style={{ fontSize: "15px", fontWeight: "700", color: "#0f172a", marginBottom: "18px" }}>
@@ -240,10 +262,10 @@ function StoreTickets({ lang = "ar" }) {
                 </div>
                 <div style={{ display: "flex", gap: "10px" }}>
                   <button onClick={createTicket} disabled={creating || !subject.trim() || !message.trim()}
-                    style={{ padding: "10px 24px", background: "#22c55e", color: "white", border: "none", borderRadius: "9px", cursor: "pointer", fontSize: "14px", fontWeight: "600", fontFamily: "Tajawal, sans-serif" }}>
-                    {creating ? "⏳" : (lang === "ar" ? "إرسال التذكرة" : "Submit Ticket")}
+                    style={{ padding: "10px 24px", background: (creating || !subject.trim() || !message.trim()) ? "#94a3b8" : "#22c55e", color: "white", border: "none", borderRadius: "9px", cursor: (creating || !subject.trim() || !message.trim()) ? "not-allowed" : "pointer", fontSize: "14px", fontWeight: "600", fontFamily: "Tajawal, sans-serif" }}>
+                    {creating ? "⏳ " + (lang === "ar" ? "جاري الإرسال..." : "Sending...") : (lang === "ar" ? "إرسال التذكرة" : "Submit Ticket")}
                   </button>
-                  <button onClick={() => { setShowNew(false); setSubject(""); setMessage(""); }}
+                  <button onClick={() => { setShowNew(false); setSubject(""); setMessage(""); setError(""); }}
                     style={{ padding: "10px 20px", background: "#f1f5f9", color: "#64748b", border: "none", borderRadius: "9px", cursor: "pointer", fontSize: "14px", fontFamily: "Tajawal, sans-serif" }}>
                     {lang === "ar" ? "إلغاء" : "Cancel"}
                   </button>
@@ -251,13 +273,14 @@ function StoreTickets({ lang = "ar" }) {
               </div>
             )}
 
+            {/* القائمة */}
             {loading ? (
               <div style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>⏳</div>
             ) : tickets.length === 0 ? (
               <div style={{ textAlign: "center", padding: "60px", background: "white", borderRadius: "14px", border: "1px solid #e2e8f0", color: "#94a3b8" }}>
                 <div style={{ fontSize: "44px", marginBottom: "12px" }}>🎫</div>
                 <p style={{ fontSize: "14px" }}>
-                  {lang === "ar" ? "لا توجد تذاكر — أنشئ تذكرة جديدة للتواصل مع الإدارة" : "No tickets yet"}
+                  {lang === "ar" ? "لا توجد تذاكر — أنشئ تذكرة جديدة للتواصل مع الإدارة" : "No tickets yet — create a new ticket to contact support"}
                 </p>
               </div>
             ) : (
@@ -265,14 +288,11 @@ function StoreTickets({ lang = "ar" }) {
                 {tickets.map(t => {
                   const cfg = STATUS_CONFIG[t.status] || STATUS_CONFIG.open;
                   return (
-                    <div key={t.id}
-                      onClick={() => navigate(`/store/dashboard/tickets/${t.id}`)}
+                    <div key={t.id} onClick={() => navigate(`/store/dashboard/tickets/${t.id}`)}
                       style={{ background: "white", borderRadius: "12px", border: `1.5px solid ${Number(t.unread_count) > 0 ? "#3b82f6" : "#e2e8f0"}`, padding: "16px 20px", cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", gap: "14px" }}
                       onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.08)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
                       onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0)"; }}>
-                      <div style={{ width: "40px", height: "40px", borderRadius: "10px", background: cfg.bg, border: `1px solid ${cfg.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", flexShrink: 0 }}>
-                        🎫
-                      </div>
+                      <div style={{ width: "40px", height: "40px", borderRadius: "10px", background: cfg.bg, border: `1px solid ${cfg.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", flexShrink: 0 }}>🎫</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
                           <p style={{ fontWeight: "700", fontSize: "14px", color: "#0f172a", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.subject}</p>

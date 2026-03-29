@@ -1,11 +1,21 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
-import { BrowserRouter } from "react-router-dom"
+import { BrowserRouter, useLocation } from "react-router-dom"
+import { useEffect } from "react"
 import "./index.css";
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [pathname]);
+  return null;
+}
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <BrowserRouter>
+    <ScrollToTop />
     <App />
   </BrowserRouter>
 )

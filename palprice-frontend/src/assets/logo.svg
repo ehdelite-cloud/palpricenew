@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="140" height="44" viewBox="0 0 140 44">
+  <rect x="2" y="2" width="40" height="40" rx="20" fill="#0f172a" stroke="#4ade80" stroke-width="1.5"/>
+  <ellipse cx="22" cy="16" rx="5" ry="9" fill="#4ade80" transform="rotate(-25 22 16)"/>
+  <ellipse cx="14" cy="22" rx="4" ry="7" fill="#4ade80" transform="rotate(-50 14 22)"/>
+  <ellipse cx="30" cy="20" rx="4" ry="7" fill="#16a34a" transform="rotate(15 30 20)"/>
+  <polyline points="10,34 22,26 34,34" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="10,40 22,32 34,40" fill="none" stroke="#15803d" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="50" y="20" font-family="Georgia, serif" font-size="18" font-weight="700" fill="#0f172a">Pal<tspan fill="#15803d">Price</tspan></text>
+  <text x="50" y="36" font-family="Tajawal, Arial, sans-serif" font-size="9" fill="#94a3b8">مقارنة الأسعار الفلسطيني</text>
+</svg>

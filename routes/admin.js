@@ -1,8 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../db/db");
-const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const { authAdmin, authSuperAdmin } = require("../middleware/auth");
 
 /* ==============================
    HELPERS
@@ -20,41 +21,7 @@ function parseBoolean(value) {
   return null;
 }
 
-function adminAuth(req, res, next) {
-  const token = req.headers.authorization?.split(" ")[1];
-  if (!token) return res.status(401).json({ error: "No token" });
 
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "secretkey");
-    if (!["admin", "moderator"].includes(decoded.role)) {
-      return res.status(403).json({ error: "Not authorized" });
-    }
-
-    req.userId = decoded.id;
-    req.userRole = decoded.role;
-    next();
-  } catch {
-    res.status(401).json({ error: "Invalid token" });
-  }
-}
-
-function superAdminAuth(req, res, next) {
-  const token = req.headers.authorization?.split(" ")[1];
-  if (!token) return res.status(401).json({ error: "No token" });
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "secretkey");
-    if (decoded.role !== "admin") {
-      return res.status(403).json({ error: "Super admin only" });
-    }
-
-    req.userId = decoded.id;
-    req.userRole = decoded.role;
-    next();
-  } catch {
-    res.status(401).json({ error: "Invalid token" });
-  }
-}
 
 /* ==============================
    LOGIN
@@ -90,7 +57,7 @@ router.post("/login", async (req, res) => {
 
     const token = jwt.sign(
       { id: user.id, role: user.role },
-      process.env.JWT_SECRET || "secretkey",
+      process.env.JWT_SECRET,
       { expiresIn: "30d" }
     );
 
@@ -113,7 +80,7 @@ router.post("/login", async (req, res) => {
    ANALYTICS
 ============================== */
 
-router.get("/analytics", adminAuth, async (req, res) => {
+router.get("/analytics", authAdmin, async (req, res) => {
   try {
     const [
       products,
@@ -164,7 +131,7 @@ router.get("/analytics", adminAuth, async (req, res) => {
    USERS
 ============================== */
 
-router.get("/users", adminAuth, async (req, res) => {
+router.get("/users", authAdmin, async (req, res) => {
   try {
     const { search = "", role = "" } = req.query;
     const page = parsePage(req.query.page, 1);
@@ -209,7 +176,7 @@ router.get("/users", adminAuth, async (req, res) => {
   }
 });
 
-router.put("/users/:id/role", adminAuth, async (req, res) => {
+router.put("/users/:id/role", authAdmin, async (req, res) => {
   try {
     const { role } = req.body;
 
@@ -238,7 +205,7 @@ router.put("/users/:id/role", adminAuth, async (req, res) => {
   }
 });
 
-router.put("/users/:id/ban", adminAuth, async (req, res) => {
+router.put("/users/:id/ban", authAdmin, async (req, res) => {
   try {
     const banned = parseBoolean(req.body.banned);
     const reason = req.body.reason || null;
@@ -272,7 +239,7 @@ router.put("/users/:id/ban", adminAuth, async (req, res) => {
    STORES
 ============================== */
 
-router.get("/stores", adminAuth, async (req, res) => {
+router.get("/stores", authAdmin, async (req, res) => {
   try {
     const { search = "" } = req.query;
     const page = parsePage(req.query.page, 1);
@@ -317,7 +284,7 @@ router.get("/stores", adminAuth, async (req, res) => {
   }
 });
 
-router.put("/stores/:id/status", adminAuth, async (req, res) => {
+router.put("/stores/:id/status", authAdmin, async (req, res) => {
   try {
     const isActive = parseBoolean(req.body.is_active);
 
@@ -346,7 +313,7 @@ router.put("/stores/:id/status", adminAuth, async (req, res) => {
   }
 });
 
-router.delete("/stores/:id", superAdminAuth, async (req, res) => {
+router.delete("/stores/:id", authSuperAdmin, async (req, res) => {
   try {
     await pool.query(
       "DELETE FROM stores WHERE id=$1",
@@ -362,7 +329,7 @@ router.delete("/stores/:id", superAdminAuth, async (req, res) => {
    PRODUCTS
 ============================== */
 
-router.get("/products", adminAuth, async (req, res) => {
+router.get("/products", authAdmin, async (req, res) => {
   try {
     const { status = "", search = "" } = req.query;
     const page = parsePage(req.query.page, 1);
@@ -412,7 +379,7 @@ router.get("/products", adminAuth, async (req, res) => {
   }
 });
 
-router.put("/products/:id/approve", adminAuth, async (req, res) => {
+router.put("/products/:id/approve", authAdmin, async (req, res) => {
   try {
     await pool.query(
       "UPDATE products SET status='approved' WHERE id=$1",
@@ -435,7 +402,7 @@ router.put("/products/:id/approve", adminAuth, async (req, res) => {
   }
 });
 
-router.put("/products/:id/reject", adminAuth, async (req, res) => {
+router.put("/products/:id/reject", authAdmin, async (req, res) => {
   try {
     const { reason } = req.body;
 
@@ -460,7 +427,7 @@ router.put("/products/:id/reject", adminAuth, async (req, res) => {
   }
 });
 
-router.delete("/products/:id", adminAuth, async (req, res) => {
+router.delete("/products/:id", authAdmin, async (req, res) => {
   try {
     await pool.query(
       "DELETE FROM products WHERE id=$1",
@@ -476,7 +443,7 @@ router.delete("/products/:id", adminAuth, async (req, res) => {
    NOTIFICATIONS
 ============================== */
 
-router.get("/notifications", adminAuth, async (req, res) => {
+router.get("/notifications", authAdmin, async (req, res) => {
   try {
     const result = await pool.query(
       "SELECT * FROM admin_notifications ORDER BY created_at DESC LIMIT 50"
@@ -487,7 +454,7 @@ router.get("/notifications", adminAuth, async (req, res) => {
   }
 });
 
-router.put("/notifications/:id/read", adminAuth, async (req, res) => {
+router.put("/notifications/:id/read", authAdmin, async (req, res) => {
   try {
     await pool.query(
       "UPDATE admin_notifications SET is_read=true WHERE id=$1",
@@ -499,7 +466,7 @@ router.put("/notifications/:id/read", adminAuth, async (req, res) => {
   }
 });
 
-router.put("/notifications/read-all", adminAuth, async (req, res) => {
+router.put("/notifications/read-all", authAdmin, async (req, res) => {
   try {
     await pool.query("UPDATE admin_notifications SET is_read=true");
     res.json({ message: "Done" });
@@ -512,7 +479,7 @@ router.put("/notifications/read-all", adminAuth, async (req, res) => {
    MODERATORS
 ============================== */
 
-router.get("/moderators", adminAuth, async (req, res) => {
+router.get("/moderators", authAdmin, async (req, res) => {
   try {
     const result = await pool.query(
       "SELECT id, name, email, role, avatar, created_at FROM users WHERE role IN ('admin','moderator') ORDER BY role, created_at"

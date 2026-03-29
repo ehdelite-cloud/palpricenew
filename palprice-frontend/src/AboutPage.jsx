@@ -1,23 +1,40 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 
 function AboutPage({ lang = "ar" }) {
-  const stats = [
-    { value: "10K+", label: lang === "ar" ? "منتج مقارن" : "Products" },
-    { value: "120+", label: lang === "ar" ? "متجر فلسطيني" : "Stores" },
-    { value: "50K+", label: lang === "ar" ? "مستخدم نشط" : "Users" },
-    { value: "2024", label: lang === "ar" ? "سنة التأسيس" : "Founded" },
-  ];
+  // ← useState أولاً قبل أي استخدام
+  const [liveStats, setLiveStats] = useState(null);
+
+useEffect(() => {
+  Promise.all([
+    fetch('/api/stores').then(r=>r.json()),
+    fetch('/api/products/search?q=a').then(r=>r.json()),
+    fetch('/api/prices/deals').then(r=>r.json()),
+  ]).then(([stores, products, deals]) => {
+    setLiveStats({
+      stores:   Array.isArray(stores)   ? stores.length   : 0,
+      products: Array.isArray(products) ? products.length : 0,
+      deals:    Array.isArray(deals)    ? deals.length    : 0,
+    });
+  }).catch(() => {});
+}, []);
+
+const stats = [
+  { value: liveStats ? `${liveStats.products}+` : "...", label: lang === "ar" ? "منتج مقارن"    : "Products" },
+  { value: liveStats ? `${liveStats.stores}+`   : "...", label: lang === "ar" ? "متجر فلسطيني"  : "Stores"   },
+  { value: liveStats ? `${liveStats.deals}+`    : "...", label: lang === "ar" ? "عرض وخصم"      : "Deals"    },
+  { value: "2026",                                        label: lang === "ar" ? "سنة التأسيس"   : "Founded"  },
+];
+  
 
   const values = [
-    { icon: "🇵🇸", title: lang === "ar" ? "فلسطيني 100%" : "100% Palestinian", desc: lang === "ar" ? "نؤمن بدعم الاقتصاد الفلسطيني ونربط المستهلك بالتاجر المحلي" : "We support Palestinian economy by connecting consumers with local merchants" },
-    { icon: "💡", title: lang === "ar" ? "الشفافية" : "Transparency", desc: lang === "ar" ? "نعرض أسعار حقيقية من متاجر حقيقية — بدون تضليل أو إخفاء" : "Real prices from real stores — no manipulation or hidden costs" },
-    { icon: "⚡", title: lang === "ar" ? "السرعة والدقة" : "Speed & Accuracy", desc: lang === "ar" ? "أسعار محدّثة باستمرار لتضمن حصولك على أفضل صفقة دائماً" : "Continuously updated prices so you always get the best deal" },
-    { icon: "🤝", title: lang === "ar" ? "دعم التجار" : "Supporting Merchants", desc: lang === "ar" ? "نوفر للتجار منصة مجانية لعرض منتجاتهم والوصول لعملاء أكثر" : "Free platform for merchants to showcase products and reach more customers" },
+    { icon: "🇵🇸", title: lang === "ar" ? "فلسطيني 100%"   : "100% Palestinian",  desc: lang === "ar" ? "نؤمن بدعم الاقتصاد الفلسطيني ونربط المستهلك بالتاجر المحلي"                   : "We support Palestinian economy by connecting consumers with local merchants" },
+    { icon: "💡",  title: lang === "ar" ? "الشفافية"        : "Transparency",       desc: lang === "ar" ? "نعرض أسعار حقيقية من متاجر حقيقية — بدون تضليل أو إخفاء"                     : "Real prices from real stores — no manipulation or hidden costs" },
+    { icon: "⚡",  title: lang === "ar" ? "السرعة والدقة"   : "Speed & Accuracy",   desc: lang === "ar" ? "أسعار محدّثة باستمرار لتضمن حصولك على أفضل صفقة دائماً"                     : "Continuously updated prices so you always get the best deal" },
+    { icon: "🤝",  title: lang === "ar" ? "دعم التجار"      : "Supporting Merchants",desc: lang === "ar" ? "نوفر للتجار منصة مجانية لعرض منتجاتهم والوصول لعملاء أكثر"                  : "Free platform for merchants to showcase products and reach more customers" },
   ];
 
-  const team = [
-    { name: "فريق PalPrice", role: lang === "ar" ? "مطورون فلسطينيون شغوفون" : "Passionate Palestinian Developers", icon: "👨‍💻" },
-  ];
+  
 
   return (
     <div>
@@ -39,13 +56,18 @@ function AboutPage({ lang = "ar" }) {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* ── Stats ── إصلاح الموبايل: repeat(4,1fr) → repeat(auto-fit,...) */}
       <div style={{ background: "white", borderBottom: "1px solid #f1f5f9" }}>
-        <div style={{ maxWidth: "1000px", margin: "auto", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", padding: "0 24px" }}>
+        <div style={{
+          maxWidth: "1000px", margin: "auto",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",   /* ← إصلاح */
+          padding: "0 24px",
+        }}>
           {stats.map((s, i) => (
-            <div key={i} style={{ padding: "28px 20px", textAlign: "center", borderLeft: i > 0 ? "1px solid #f1f5f9" : "none" }}>
-              <p style={{ fontSize: "32px", fontWeight: "900", color: "#16a34a", margin: "0 0 4px", fontFamily: "Cairo, sans-serif" }}>{s.value}</p>
-              <p style={{ fontSize: "13px", color: "#64748b", margin: 0 }}>{s.label}</p>
+            <div key={i} style={{ padding: "28px 16px", textAlign: "center", borderLeft: i > 0 ? "1px solid #f1f5f9" : "none" }}>
+              <p style={{ fontSize: "clamp(22px,4vw,32px)", fontWeight: "900", color: "#16a34a", margin: "0 0 4px", fontFamily: "Cairo, sans-serif" }}>{s.value}</p>
+              <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{s.label}</p>
             </div>
           ))}
         </div>
@@ -53,7 +75,7 @@ function AboutPage({ lang = "ar" }) {
 
       {/* Story */}
       <div style={{ maxWidth: "800px", margin: "64px auto", padding: "0 24px", textAlign: "center" }}>
-        <h2 style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", marginBottom: "20px", fontFamily: "Cairo, Tajawal, sans-serif" }}>
+        <h2 style={{ fontSize: "clamp(22px,3vw,28px)", fontWeight: "800", color: "#0f172a", marginBottom: "20px", fontFamily: "Cairo, Tajawal, sans-serif" }}>
           {lang === "ar" ? "قصتنا" : "Our Story"}
         </h2>
         <p style={{ fontSize: "16px", color: "#475569", lineHeight: 1.9, marginBottom: "16px" }}>
@@ -71,10 +93,10 @@ function AboutPage({ lang = "ar" }) {
       {/* Values */}
       <div style={{ background: "#f8fafc", padding: "64px 24px" }}>
         <div style={{ maxWidth: "1000px", margin: "auto" }}>
-          <h2 style={{ fontSize: "26px", fontWeight: "800", color: "#0f172a", textAlign: "center", marginBottom: "40px", fontFamily: "Cairo, Tajawal, sans-serif" }}>
+          <h2 style={{ fontSize: "clamp(20px,3vw,26px)", fontWeight: "800", color: "#0f172a", textAlign: "center", marginBottom: "40px", fontFamily: "Cairo, Tajawal, sans-serif" }}>
             {lang === "ar" ? "قيمنا" : "Our Values"}
           </h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "20px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "20px" }}>
             {values.map((v, i) => (
               <div key={i} style={{ background: "white", borderRadius: "16px", padding: "28px 22px", border: "1.5px solid #e2e8f0", textAlign: "center" }}>
                 <div style={{ fontSize: "36px", marginBottom: "14px" }}>{v.icon}</div>
@@ -88,17 +110,17 @@ function AboutPage({ lang = "ar" }) {
 
       {/* CTA */}
       <div style={{ background: "linear-gradient(135deg, #0f172a, #1e293b)", padding: "64px 24px", textAlign: "center" }}>
-        <h2 style={{ fontSize: "26px", fontWeight: "800", color: "white", marginBottom: "12px", fontFamily: "Cairo, Tajawal, sans-serif" }}>
+        <h2 style={{ fontSize: "clamp(20px,3vw,26px)", fontWeight: "800", color: "white", marginBottom: "12px", fontFamily: "Cairo, Tajawal, sans-serif" }}>
           {lang === "ar" ? "انضم إلى مجتمع PalPrice" : "Join the PalPrice Community"}
         </h2>
         <p style={{ color: "#64748b", marginBottom: "28px", fontSize: "15px" }}>
           {lang === "ar" ? "سواء كنت مستهلكاً أو تاجراً، هناك مكان لك عندنا" : "Whether you're a consumer or merchant, there's a place for you here"}
         </p>
         <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
-          <Link to="/register" style={{ padding: "12px 28px", background: "linear-gradient(135deg, #22c55e, #16a34a)", color: "white", borderRadius: "12px", textDecoration: "none", fontSize: "14px", fontWeight: "700", boxShadow: "0 4px 16px rgba(34,197,94,0.3)" }}>
+          <Link to="/contact" style={{ padding: "12px 28px", background: "linear-gradient(135deg, #22c55e, #16a34a)", color: "white", borderRadius: "12px", textDecoration: "none", fontSize: "14px", fontWeight: "700", boxShadow: "0 4px 16px rgba(34,197,94,0.3)" }}>
             {lang === "ar" ? "إنشاء حساب" : "Create Account"}
           </Link>
-          <Link to="/store/register" style={{ padding: "12px 28px", background: "rgba(255,255,255,0.08)", color: "white", borderRadius: "12px", textDecoration: "none", fontSize: "14px", fontWeight: "600", border: "1px solid rgba(255,255,255,0.15)" }}>
+          <Link to="/contact" style={{ padding: "12px 28px", background: "rgba(255,255,255,0.08)", color: "white", borderRadius: "12px", textDecoration: "none", fontSize: "14px", fontWeight: "600", border: "1px solid rgba(255,255,255,0.15)" }}>
             {lang === "ar" ? "سجّل متجرك" : "Register Store"}
           </Link>
         </div>

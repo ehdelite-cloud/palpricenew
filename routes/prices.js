@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../db/db");
-const { redis } = require("../utils/redis");
+const redis = require("../utils/redis");
 /* ==============================
    HELPERS
 ============================== */
@@ -78,8 +78,8 @@ async function checkAndTriggerAlerts(productId) {
 
 async function deleteCacheByPattern(pattern) {
   try {
-    const keys = await redis.keys(pattern);
-    if (keys.length > 0) {
+   const keys = await redis.safeKeys(pattern);
+if (keys.length > 0) await redis.safeDel(keys); {
       await redis.del(keys);
     }
   } catch (err) {
@@ -212,11 +212,12 @@ router.get("/product/:id", async (req, res) => {
   try {
     const result = await pool.query(
       `
-      SELECT pr.id, pr.price, s.id AS store_id, s.name AS store_name, s.logo AS store_logo
-      FROM prices pr
-      JOIN stores s ON pr.store_id = s.id
-      WHERE pr.product_id = $1
-      ORDER BY pr.price ASC
+      SELECT pr.id, pr.price, s.id AS store_id, s.name AS store_name, 
+s.logo AS store_logo, s.phone, s.whatsapp, s.instagram, 
+s.facebook, s.website, s.city, s.address
+FROM prices pr JOIN stores s ON pr.store_id = s.id
+WHERE pr.product_id = $1
+ORDER BY pr.price ASC
     `,
       [req.params.id]
     );

@@ -37,34 +37,45 @@ const BEST_PRICE_CTE = `
 ============================================================ */
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password } = req.body;
-
-    if (!name || !email || !password)
+    const { name, email, phone, password } = req.body;
+ 
+    // التحقق من الحقول الإجبارية
+    if (!name || !email || !phone || !password)
       return res.status(400).json({ error: "All fields required" });
-
-    const exists = await pool.query(
-      "SELECT id FROM users WHERE email=$1",
+    if (!/^[0-9]{10}$/.test(phone))
+  return res.status(400).json({ error: "رقم الهاتف يجب أن يكون 10 أرقام" });
+ 
+    // تحقق من تكرار الإيميل
+    const emailExists = await pool.query(
+      "SELECT id FROM users WHERE email = $1",
       [email]
     );
-
-    if (exists.rows.length > 0)
-      return res.status(400).json({ error: "Email already exists" });
-
-    const hash = await bcrypt.hash(password, 10);
-
-    const result = await pool.query(
-      `INSERT INTO users (name,email,password,role)
-       VALUES ($1,$2,$3,'user')
-       RETURNING id,name,email,role`,
-      [name, email, hash]
+    if (emailExists.rows.length > 0)
+      return res.status(400).json({ error: "Email already registered" });
+ 
+    // تحقق من تكرار الهاتف
+    const phoneExists = await pool.query(
+      "SELECT id FROM users WHERE phone = $1",
+      [phone]
     );
-
+    if (phoneExists.rows.length > 0)
+      return res.status(400).json({ error: "Phone already registered" });
+ 
+    const hash = await bcrypt.hash(password, 10);
+ 
+    const result = await pool.query(
+      `INSERT INTO users (name, email, phone, password_hash, role)
+       VALUES ($1, $2, $3, $4, 'user')
+       RETURNING id, name, email, phone, avatar, role, created_at`,
+      [name, email, phone, hash]
+    );
+ 
     const token = jwt.sign(
       { id: result.rows[0].id },
       process.env.JWT_SECRET || "secretkey",
       { expiresIn: "30d" }
     );
-
+ 
     res.json({ token, user: result.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -76,37 +87,46 @@ router.post("/register", async (req, res) => {
 ============================================================ */
 router.post("/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
-
+    const { email, phone, password } = req.body;
+ 
+    // يجب أن يُرسل إيميل أو هاتف
+    const identifier = email || phone;
+    if (!identifier || !password)
+      return res.status(400).json({ error: "All fields required" });
+ 
+    // بحث بالإيميل أو الهاتف
     const user = await pool.query(
-      "SELECT * FROM users WHERE email=$1",
-      [email]
+      "SELECT * FROM users WHERE email = $1 OR (phone IS NOT NULL AND phone = $1)",
+      [identifier]
     );
-
+ 
     if (user.rows.length === 0)
       return res.status(404).json({ error: "User not found" });
-
+ 
     if (user.rows[0].is_banned)
-      return res.status(403).json({ error: "Account banned" });
-
-    const valid = await bcrypt.compare(password, user.rows[0].password);
+      return res.status(403).json({ error: "banned", message: user.rows[0].ban_reason || "Account banned" });
+ 
+    const hash = user.rows[0].password_hash || user.rows[0].password;
+const valid = await bcrypt.compare(password, hash);
     if (!valid)
       return res.status(401).json({ error: "Wrong password" });
-
+ 
     const token = jwt.sign(
       { id: user.rows[0].id },
       process.env.JWT_SECRET || "secretkey",
       { expiresIn: "30d" }
     );
-
+ 
     res.json({
       token,
       user: {
-        id: user.rows[0].id,
-        name: user.rows[0].name,
-        email: user.rows[0].email,
-        avatar: user.rows[0].avatar,
-        role: user.rows[0].role,
+        id:         user.rows[0].id,
+        name:       user.rows[0].name,
+        email:      user.rows[0].email,
+        phone:      user.rows[0].phone,
+        avatar:     user.rows[0].avatar,
+        role:       user.rows[0].role,
+        created_at: user.rows[0].created_at,
       },
     });
   } catch (err) {
@@ -119,7 +139,7 @@ router.post("/login", async (req, res) => {
 ============================================================ */
 router.get("/profile", authMiddleware, async (req, res) => {
   const result = await pool.query(
-    "SELECT id,name,email,avatar,role FROM users WHERE id=$1",
+    "SELECT id, name, email, avatar, role, created_at FROM users WHERE id = $1",
     [req.userId]
   );
 
@@ -325,6 +345,43 @@ router.delete("/price-alerts/:id", authMiddleware, async (req, res) => {
   );
 
   res.json({ message: "Deleted" });
+});
+
+router.post("/check", async (req, res) => {
+  const { email, phone } = req.body;
+  const e = await pool.query("SELECT id FROM users WHERE email=$1", [email]);
+  if (e.rows.length > 0)
+    return res.status(400).json({ error: `البريد "${email}" مسجل مسبقاً — سجّل دخولك أو استرجع كلمة المرور` });
+  const p = await pool.query("SELECT id FROM users WHERE phone=$1", [phone]);
+  if (p.rows.length > 0)
+    return res.status(400).json({ error: `رقم الهاتف "${phone}" مسجل مسبقاً — سجّل دخولك` });
+  res.json({ ok: true });
+});
+
+// حذف viewed كلها
+router.delete("/viewed/clear", authMiddleware, async (req, res) => {
+  await pool.query("DELETE FROM user_viewed WHERE user_id = $1", [req.userId]);
+  res.json({ ok: true });
+});
+
+// حذف كل المقارنات
+router.delete("/comparisons/clear", authMiddleware, async (req, res) => {
+  await pool.query("DELETE FROM user_comparisons WHERE user_id = $1", [req.userId]);
+  res.json({ ok: true });
+});
+
+// حذف مقارنة واحدة
+router.delete("/comparisons/:id", authMiddleware, async (req, res) => {
+  await pool.query("DELETE FROM user_comparisons WHERE id = $1 AND user_id = $2", [req.params.id, req.userId]);
+  res.json({ ok: true });
+});
+
+
+
+// حذف تنبيه سعر
+router.delete("/price-alerts/:id", authMiddleware, async (req, res) => {
+  await pool.query("DELETE FROM price_alerts WHERE id = $1 AND user_id = $2", [req.params.id, req.userId]);
+  res.json({ ok: true });
 });
 
 module.exports = router;

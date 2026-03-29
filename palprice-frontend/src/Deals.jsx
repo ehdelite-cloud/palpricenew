@@ -7,9 +7,9 @@ function fixImg(url) {
 }
 
 function Deals({ lang = "ar" }) {
-  const [deals, setDeals]   = useState([]);
+  const [deals,   setDeals]   = useState([]);
   const [loading, setLoading] = useState(true);
-  const [sort, setSort]     = useState("discount");
+  const [sort,    setSort]    = useState("discount");
 
   useEffect(() => {
     fetch("/api/prices/deals")
@@ -19,9 +19,9 @@ function Deals({ lang = "ar" }) {
   }, []);
 
   let sorted = [...deals];
-  if (sort === "discount")   sorted.sort((a, b) => Number(b.discount) - Number(a.discount));
-  if (sort === "price_low")  sorted.sort((a, b) => Number(a.lowest_price) - Number(b.lowest_price));
-  if (sort === "price_high") sorted.sort((a, b) => Number(b.lowest_price) - Number(a.lowest_price));
+  if (sort === "discount")   sorted.sort((a, b) => Number(b.discount)      - Number(a.discount));
+  if (sort === "price_low")  sorted.sort((a, b) => Number(a.lowest_price)  - Number(b.lowest_price));
+  if (sort === "price_high") sorted.sort((a, b) => Number(b.lowest_price)  - Number(a.lowest_price));
   if (sort === "percent")    sorted.sort((a, b) => {
     const pa = a.highest_price > 0 ? ((a.highest_price - a.lowest_price) / a.highest_price) : 0;
     const pb = b.highest_price > 0 ? ((b.highest_price - b.lowest_price) / b.highest_price) : 0;
@@ -52,13 +52,12 @@ function Deals({ lang = "ar" }) {
               </p>
             </div>
 
-            {/* ترتيب */}
             <select value={sort} onChange={e => setSort(e.target.value)}
               style={{ padding: "10px 16px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.08)", color: "white", fontSize: "13px", fontFamily: "Tajawal, sans-serif", cursor: "pointer", outline: "none" }}>
-              <option value="discount" style={{ background: "#0f172a" }}>{lang === "ar" ? "أكبر توفير" : "Biggest Saving"}</option>
-              <option value="percent"  style={{ background: "#0f172a" }}>{lang === "ar" ? "أعلى نسبة خصم" : "Highest Discount %"}</option>
-              <option value="price_low" style={{ background: "#0f172a" }}>{lang === "ar" ? "السعر: من الأقل" : "Price: Low to High"}</option>
-              <option value="price_high" style={{ background: "#0f172a" }}>{lang === "ar" ? "السعر: من الأعلى" : "Price: High to Low"}</option>
+              <option value="discount"   style={{ background: "#0f172a" }}>{lang === "ar" ? "أكبر توفير"       : "Biggest Saving"      }</option>
+              <option value="percent"    style={{ background: "#0f172a" }}>{lang === "ar" ? "أعلى نسبة خصم"   : "Highest Discount %"  }</option>
+              <option value="price_low"  style={{ background: "#0f172a" }}>{lang === "ar" ? "السعر: من الأقل"  : "Price: Low to High"  }</option>
+              <option value="price_high" style={{ background: "#0f172a" }}>{lang === "ar" ? "السعر: من الأعلى" : "Price: High to Low"  }</option>
             </select>
           </div>
         </div>
@@ -90,36 +89,42 @@ function Deals({ lang = "ar" }) {
             </p>
           </div>
         ) : (
-          <div className="products-grid">
+          /* ← products-grid يضمن auto-fill + height متساوي عبر align-items: stretch */
+          <div className="products-grid" style={{ alignItems: "stretch" }}>
             {sorted.map(d => {
               const pct = d.highest_price > 0
                 ? Math.round(((d.highest_price - d.lowest_price) / d.highest_price) * 100)
                 : 0;
 
               return (
-                <Link key={d.id} to={`/product/${d.id}`} style={{ textDecoration: "none", display: "block" }}>
-                  <div style={{ background: "white", border: "1.5px solid #e2e8f0", borderRadius: "16px", overflow: "hidden", transition: "all 0.22s", cursor: "pointer" }}
+                /* ← display:flex + height:100% يجعل كل كرت يمتد لنفس ارتفاع الصف */
+                <Link key={d.id} to={`/product/${d.id}`} style={{ textDecoration: "none", display: "flex" }}>
+                  <div style={{
+                    background: "white", border: "1.5px solid #e2e8f0",
+                    borderRadius: "16px", overflow: "hidden",
+                    transition: "all 0.22s", cursor: "pointer",
+                    display: "flex", flexDirection: "column",   /* ← مهم */
+                    width: "100%",                              /* ← مهم */
+                  }}
                     onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-6px)"; e.currentTarget.style.boxShadow = "0 16px 40px rgba(0,0,0,0.1)"; e.currentTarget.style.borderColor = "#fca5a5"; }}
-                    onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = "#e2e8f0"; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)";    e.currentTarget.style.boxShadow = "none";                          e.currentTarget.style.borderColor = "#e2e8f0"; }}
                   >
-                    {/* صورة + badge */}
-                    <div style={{ position: "relative", background: "linear-gradient(145deg, #f8fafc, #f1f5f9)", height: "180px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {/* صورة + badges — ارتفاع ثابت */}
+                    <div style={{ position: "relative", background: "linear-gradient(145deg, #f8fafc, #f1f5f9)", height: "180px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       {d.image ? (
                         <img src={fixImg(d.image)} alt={d.name}
                           style={{ maxHeight: "150px", maxWidth: "85%", objectFit: "contain", transition: "transform 0.3s" }}
-                          onError={e => { e.target.style.display = "none"; }} />
+                          onError={e => e.target.style.display = "none"} />
                       ) : (
                         <span style={{ fontSize: "52px" }}>📦</span>
                       )}
 
-                      {/* خصم % */}
                       {pct > 0 && (
                         <div style={{ position: "absolute", top: "12px", right: "12px", background: "linear-gradient(135deg, #ef4444, #dc2626)", color: "white", padding: "5px 10px", borderRadius: "10px", fontSize: "13px", fontWeight: "800", boxShadow: "0 4px 12px rgba(239,68,68,0.35)" }}>
                           -{pct}%
                         </div>
                       )}
 
-                      {/* توفير */}
                       {Number(d.discount) > 0 && (
                         <div style={{ position: "absolute", bottom: "10px", right: "10px", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", padding: "3px 10px", borderRadius: "99px", fontSize: "11px", fontWeight: "700" }}>
                           {lang === "ar" ? "وفر" : "Save"} {Number(d.discount).toLocaleString()} ₪
@@ -127,13 +132,13 @@ function Deals({ lang = "ar" }) {
                       )}
                     </div>
 
-                    {/* معلومات */}
-                    <div style={{ padding: "16px" }}>
-                      <h3 style={{ fontSize: "14px", fontWeight: "700", color: "#0f172a", lineHeight: 1.4, marginBottom: "12px", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                    {/* معلومات — flex:1 يجعلها تملأ المساحة */}
+                    <div style={{ padding: "16px", flex: 1, display: "flex", flexDirection: "column" }}>
+                      <h3 style={{ fontSize: "14px", fontWeight: "700", color: "#0f172a", lineHeight: 1.4, marginBottom: "12px", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", minHeight: "40px" /* ← ارتفاع ثابت للاسم */ }}>
                         {d.name}
                       </h3>
 
-                      <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginBottom: "8px" }}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginBottom: "8px", marginTop: "auto" }}>
                         <span style={{ fontSize: "22px", fontWeight: "900", color: "#ef4444", fontFamily: "Cairo, sans-serif" }}>
                           {Number(d.lowest_price).toLocaleString()} ₪
                         </span>
@@ -144,7 +149,6 @@ function Deals({ lang = "ar" }) {
                         )}
                       </div>
 
-                      {/* شريط التوفير */}
                       {pct > 0 && (
                         <div style={{ height: "4px", background: "#f1f5f9", borderRadius: "99px", overflow: "hidden" }}>
                           <div style={{ height: "100%", width: `${pct}%`, background: "linear-gradient(90deg, #22c55e, #ef4444)", borderRadius: "99px", transition: "width 0.6s ease" }} />

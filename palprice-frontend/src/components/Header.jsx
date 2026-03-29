@@ -3,20 +3,21 @@ import { useState, useEffect, useRef } from "react";
 import NotificationBell from "./NotificationBell";
 
 function Header({ search, setSearch, lang, setLang, user, onLogout, notifications = [], setNotifications }) {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [suggestions, setSuggestions] = useState([]);
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const navigate     = useNavigate();
+  const location     = useLocation();
+  const [suggestions,    setSuggestions]    = useState([]);
+  const [showUserMenu,   setShowUserMenu]   = useState(false);
+  const [scrolled,       setScrolled]       = useState(false);
+  const [unreadCount,    setUnreadCount]    = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const searchRef = useRef(null);
+  const searchRef   = useRef(null);
   const userMenuRef = useRef(null);
 
+  // ── جلب عدد الإشعارات ──
   useEffect(() => {
     if (!user?.token) return;
     function fetchUnread() {
-      fetch("http://localhost:3000/users/notifications/unread-count", {
+      fetch("/api/users/notifications/unread-count", {   // ← إصلاح
         headers: { Authorization: `Bearer ${user.token}` }
       }).then(r => r.json()).then(d => { if (d.count !== undefined) setUnreadCount(d.count); }).catch(() => {});
     }
@@ -34,7 +35,7 @@ function Header({ search, setSearch, lang, setLang, user, onLogout, notification
   useEffect(() => {
     if (search.length < 2) { setSuggestions([]); return; }
     const timer = setTimeout(() => {
-      fetch(`http://localhost:3000/products/search?q=${search}`)
+      fetch(`/api/products/search?q=${encodeURIComponent(search)}`)   // ← إصلاح
         .then(r => r.json())
         .then(data => Array.isArray(data) && setSuggestions(data.slice(0, 6)));
     }, 250);
@@ -43,7 +44,7 @@ function Header({ search, setSearch, lang, setLang, user, onLogout, notification
 
   useEffect(() => {
     function handleOut(e) {
-      if (searchRef.current && !searchRef.current.contains(e.target)) setSuggestions([]);
+      if (searchRef.current  && !searchRef.current.contains(e.target))  setSuggestions([]);
       if (userMenuRef.current && !userMenuRef.current.contains(e.target)) setShowUserMenu(false);
     }
     document.addEventListener("mousedown", handleOut);
@@ -51,7 +52,7 @@ function Header({ search, setSearch, lang, setLang, user, onLogout, notification
   }, []);
 
   function handleSearch(e) {
-    if (e.key === "Enter" && search.trim()) { navigate(`/search?q=${search}`); setSuggestions([]); }
+    if (e.key === "Enter" && search.trim()) { navigate(`/search?q=${encodeURIComponent(search)}`); setSuggestions([]); }
   }
   function handleSelect(product) { setSearch(""); setSuggestions([]); navigate(`/product/${product.id}`); }
   function handleLogout() { setShowUserMenu(false); onLogout?.(); navigate("/"); }
@@ -60,15 +61,19 @@ function Header({ search, setSearch, lang, setLang, user, onLogout, notification
     return location.pathname.startsWith(path);
   }
 
-  const avatarSrc = user?.avatar ? (user.avatar.startsWith("/") ? `http://localhost:3000${user.avatar}` : user.avatar) : null;
+  const avatarSrc = user?.avatar
+    ? (user.avatar.startsWith("/") ? `/api${user.avatar}` : user.avatar)   // ← إصلاح
+    : null;
 
+  // ── NAV: "المقارنة" يظهر للجميع لكن يحتاج تسجيل دخول ──
   const NAV = [
-    { to: "/", label: lang === "ar" ? "الرئيسية" : "Home" },
-    { to: "/deals", label: lang === "ar" ? "أفضل العروض" : "Deals" },
-    { to: "/campaigns", label: lang === "ar" ? "📢 الحملات" : "📢 Campaigns" },
-    { to: "/price-check", label: lang === "ar" ? "💰 كم دفعت؟" : "💰 Price Check" },
-    { to: "/stores", label: lang === "ar" ? "المتاجر" : "Stores" },
-    { to: "/compare", label: lang === "ar" ? "المقارنة" : "Compare" },
+    { to: "/",            label: lang === "ar" ? "الرئيسية"    : "Home"         },
+    { to: "/deals",       label: lang === "ar" ? "أفضل العروض" : "Deals"        },
+    { to: "/campaigns",   label: lang === "ar" ? "📢 الحملات"  : "📢 Campaigns" },
+    { to: "/price-check", label: lang === "ar" ? "💰 كم دفعت؟" : "💰 Price Check"},
+    { to: "/stores",      label: lang === "ar" ? "المتاجر"     : "Stores"       },
+    // ← "المقارنة" تظهر فقط للمستخدم المسجّل
+    ...(user ? [{ to: "/compare", label: lang === "ar" ? "المقارنة" : "Compare" }] : []),
   ];
 
   return (
@@ -80,40 +85,23 @@ function Header({ search, setSearch, lang, setLang, user, onLogout, notification
       boxShadow: scrolled ? "0 2px 20px rgba(0,0,0,0.06)" : "none",
       transition: "all 0.25s ease",
     }}>
-      <div className="header-inner" style={{
-        maxWidth: "1240px", margin: "auto",
-        display: "flex", alignItems: "center",
-        gap: "16px", padding: "12px 24px"
-      }}>
+      <div className="header-inner" style={{ maxWidth: "1240px", margin: "auto", display: "flex", alignItems: "center", gap: "16px", padding: "14px 24px" }}>
 
         {/* Logo */}
-        <Link to="/" style={{
-          fontSize: "22px", fontWeight: "900", color: "#16a34a", textDecoration: "none",
-          flexShrink: 0, letterSpacing: "-0.5px", fontFamily: "Cairo, Tajawal, sans-serif",
-          display: "flex", alignItems: "center", gap: "6px"
-        }}>
-          <span style={{
-            background: "linear-gradient(135deg, #16a34a, #22c55e)", borderRadius: "8px",
-            width: "28px", height: "28px", display: "flex", alignItems: "center",
-            justifyContent: "center", fontSize: "14px", color: "white", flexShrink: 0
-          }}>₪</span>
+        <Link to="/" style={{ fontSize: "22px", fontWeight: "900", color: "#16a34a", textDecoration: "none", flexShrink: 0, letterSpacing: "-0.5px", fontFamily: "Cairo, Tajawal, sans-serif", display: "flex", alignItems: "center", gap: "6px" }}>
+          <span style={{ background: "linear-gradient(135deg, #16a34a, #22c55e)", borderRadius: "8px", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", color: "white", flexShrink: 0 }}>₪</span>
           PalPrice
         </Link>
 
-        {/* Nav — مخفي على الموبايل */}
+        {/* Nav Desktop */}
         <nav className="nav" style={{ display: "flex", gap: "2px", flexShrink: 0 }}>
           {NAV.map(item => (
-            <Link key={item.to} to={item.to} style={{
-              textDecoration: "none",
-              color: isActive(item.to) ? "#16a34a" : "#475569",
-              fontWeight: isActive(item.to) ? "700" : "500",
-              fontSize: "13px", padding: "6px 10px", borderRadius: "8px",
-              background: isActive(item.to) ? "#f0fdf4" : "transparent",
-              transition: "all 0.15s",
-            }}
+            <Link key={item.to} to={item.to}
+              style={{ textDecoration: "none", color: isActive(item.to) ? "#16a34a" : "#475569", fontWeight: isActive(item.to) ? "700" : "500", fontSize: "14px", padding: "6px 11px", borderRadius: "8px", background: isActive(item.to) ? "#f0fdf4" : "transparent", transition: "all 0.15s" }}
               onMouseEnter={e => { if (!isActive(item.to)) e.currentTarget.style.background = "#f8fafc"; }}
-              onMouseLeave={e => { if (!isActive(item.to)) e.currentTarget.style.background = "transparent"; }}
-            >{item.label}</Link>
+              onMouseLeave={e => { if (!isActive(item.to)) e.currentTarget.style.background = "transparent"; }}>
+              {item.label}
+            </Link>
           ))}
         </nav>
 
@@ -124,29 +112,20 @@ function Header({ search, setSearch, lang, setLang, user, onLogout, notification
             <input type="text"
               placeholder={lang === "ar" ? "ابحث عن منتج..." : "Search products..."}
               value={search} onChange={e => setSearch(e.target.value)} onKeyDown={handleSearch}
-              style={{
-                width: "100%", padding: "9px 38px 9px 16px", borderRadius: "12px",
-                border: "1.5px solid #e2e8f0", fontSize: "13px", outline: "none",
-                background: "#f8fafc", fontFamily: "Tajawal, sans-serif", color: "#0f172a", transition: "all 0.2s",
-              }}
+              style={{ width: "100%", padding: "9px 38px 9px 16px", borderRadius: "12px", border: "1.5px solid #e2e8f0", fontSize: "13px", outline: "none", background: "#f8fafc", fontFamily: "Tajawal, sans-serif", color: "#0f172a", transition: "all 0.2s" }}
               onFocus={e => { e.target.style.borderColor = "#22c55e"; e.target.style.background = "white"; e.target.style.boxShadow = "0 0 0 3px rgba(34,197,94,0.1)"; }}
               onBlur={e => { e.target.style.borderColor = "#e2e8f0"; e.target.style.background = "#f8fafc"; e.target.style.boxShadow = "none"; }}
             />
           </div>
-
           {suggestions.length > 0 && (
-            <div style={{
-              position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0,
-              background: "white", border: "1px solid #e2e8f0", borderRadius: "14px",
-              boxShadow: "0 12px 40px rgba(0,0,0,0.12)", zIndex: 200, overflow: "hidden"
-            }}>
+            <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, background: "white", border: "1px solid #e2e8f0", borderRadius: "14px", boxShadow: "0 12px 40px rgba(0,0,0,0.12)", zIndex: 200, overflow: "hidden" }}>
               {suggestions.map((p, i) => (
                 <div key={p.id} onClick={() => handleSelect(p)}
                   style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 14px", cursor: "pointer", borderBottom: i < suggestions.length - 1 ? "1px solid #f8fafc" : "none", transition: "background 0.12s" }}
                   onMouseEnter={e => e.currentTarget.style.background = "#f8fafc"}
                   onMouseLeave={e => e.currentTarget.style.background = "white"}>
                   <div style={{ width: "38px", height: "38px", borderRadius: "8px", background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
-                    {p.image ? <img src={p.image.startsWith("/") ? `http://localhost:3000${p.image}` : p.image} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} onError={e => { e.target.style.display = "none"; }} /> : <span style={{ fontSize: "16px" }}>📦</span>}
+                    {p.image ? <img src={p.image.startsWith("/") ? `/api${p.image}` : p.image} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} onError={e => e.target.style.display = "none"} /> : <span style={{ fontSize: "16px" }}>📦</span>}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: "13px", fontWeight: "600", color: "#0f172a", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</p>
@@ -155,7 +134,7 @@ function Header({ search, setSearch, lang, setLang, user, onLogout, notification
                   {p.best_price && <span style={{ fontSize: "13px", fontWeight: "800", color: "#16a34a", flexShrink: 0 }}>{Number(p.best_price).toLocaleString()} ₪</span>}
                 </div>
               ))}
-              <div onClick={() => { navigate(`/search?q=${search}`); setSuggestions([]); }}
+              <div onClick={() => { navigate(`/search?q=${encodeURIComponent(search)}`); setSuggestions([]); }}
                 style={{ padding: "10px 14px", textAlign: "center", color: "#16a34a", fontSize: "12px", fontWeight: "700", cursor: "pointer", background: "#f0fdf4", borderTop: "1px solid #dcfce7" }}
                 onMouseEnter={e => e.currentTarget.style.background = "#dcfce7"}
                 onMouseLeave={e => e.currentTarget.style.background = "#f0fdf4"}>
@@ -165,17 +144,16 @@ function Header({ search, setSearch, lang, setLang, user, onLogout, notification
           )}
         </div>
 
-        {/* Right actions — مخفية على الموبايل */}
+        {/* Right Actions Desktop */}
         <div className="header-actions" style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
-          {[
-            { to: user ? "/favorites" : "/login", icon: "❤️", tip: lang === "ar" ? "المفضلة" : "Favorites" },
-            { to: "/compare", icon: "⚖️", tip: lang === "ar" ? "المقارنة" : "Compare" },
+
+          {/* ← المفضلة والمقارنة فقط للمستخدم المسجّل */}
+          {user && [
+            { to: "/favorites", icon: "❤️", tip: lang === "ar" ? "المفضلة"  : "Favorites" },
+            { to: "/compare",   icon: "⚖️", tip: lang === "ar" ? "المقارنة" : "Compare"   },
           ].map(btn => (
-            <Link key={btn.to} to={btn.to} title={btn.tip} style={{
-              width: "36px", height: "36px", borderRadius: "10px", border: "1.5px solid #e2e8f0",
-              background: "white", display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "16px", textDecoration: "none", transition: "all 0.15s"
-            }}
+            <Link key={btn.to} to={btn.to} title={btn.tip}
+              style={{ width: "36px", height: "36px", borderRadius: "10px", border: "1.5px solid #e2e8f0", background: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", textDecoration: "none", transition: "all 0.15s" }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = "#22c55e"; e.currentTarget.style.background = "#f0fdf4"; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.background = "white"; }}>
               {btn.icon}
@@ -183,27 +161,22 @@ function Header({ search, setSearch, lang, setLang, user, onLogout, notification
           ))}
 
           {user && (
-            <div style={{ position: "relative" }}>
-              <NotificationBell mode="user" token={user.token} lang={lang} dropdownSide="right" notifications={notifications} setNotifications={setNotifications} />
-            </div>
+            <NotificationBell mode="user" token={user.token} lang={lang} dropdownSide="right" notifications={notifications} setNotifications={setNotifications} />
           )}
 
-          <button onClick={() => setLang(lang === "ar" ? "en" : "ar")} style={{
-            padding: "6px 12px", borderRadius: "10px", border: "1.5px solid #e2e8f0", background: "white",
-            color: "#475569", cursor: "pointer", fontSize: "12px", fontWeight: "600", fontFamily: "Tajawal, sans-serif", transition: "all 0.15s"
-          }}
+          {/* زر اللغة */}
+          <button onClick={() => setLang(lang === "ar" ? "en" : "ar")}
+            style={{ padding: "6px 12px", borderRadius: "10px", border: "1.5px solid #e2e8f0", background: "white", color: "#475569", cursor: "pointer", fontSize: "12px", fontWeight: "600", fontFamily: "Tajawal, sans-serif", transition: "all 0.15s" }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = "#22c55e"; e.currentTarget.style.color = "#16a34a"; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.color = "#475569"; }}>
             {lang === "ar" ? "EN" : "ع"}
           </button>
 
+          {/* حساب المستخدم */}
           {user ? (
             <div ref={userMenuRef} style={{ position: "relative" }}>
-              <button onClick={() => setShowUserMenu(p => !p)} style={{
-                display: "flex", alignItems: "center", gap: "7px", padding: "5px 10px 5px 5px",
-                borderRadius: "99px", border: `1.5px solid ${showUserMenu ? "#22c55e" : "#e2e8f0"}`,
-                background: showUserMenu ? "#f0fdf4" : "white", cursor: "pointer", transition: "all 0.2s", fontFamily: "Tajawal, sans-serif"
-              }}>
+              <button onClick={() => setShowUserMenu(p => !p)}
+                style={{ display: "flex", alignItems: "center", gap: "7px", padding: "5px 10px 5px 5px", borderRadius: "99px", border: `1.5px solid ${showUserMenu ? "#22c55e" : "#e2e8f0"}`, background: showUserMenu ? "#f0fdf4" : "white", cursor: "pointer", transition: "all 0.2s", fontFamily: "Tajawal, sans-serif" }}>
                 <div style={{ position: "relative" }}>
                   <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: "#dcfce7", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     {avatarSrc ? <img src={avatarSrc} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => e.target.style.display = "none"} /> : <span style={{ fontSize: "13px" }}>👤</span>}
@@ -221,11 +194,11 @@ function Header({ search, setSearch, lang, setLang, user, onLogout, notification
                     <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#64748b" }}>{lang === "ar" ? "حساب مستخدم" : "User Account"}</p>
                   </div>
                   {[
-                    { to: "/profile", icon: "👤", label: lang === "ar" ? "بروفايلي" : "My Profile" },
-                    { to: "/profile?tab=alerts", icon: "🔔", label: lang === "ar" ? `الإشعارات${unreadCount > 0 ? ` (${unreadCount})` : ""}` : `Alerts`, highlight: unreadCount > 0 },
-                    { to: "/favorites", icon: "❤️", label: lang === "ar" ? "المفضلة" : "Favorites" },
-                    { to: "/compare", icon: "⚖️", label: lang === "ar" ? "المقارنة" : "Compare" },
-                    { to: "/recently-viewed", icon: "👀", label: lang === "ar" ? "شاهدتها مؤخراً" : "Recently Viewed" },
+                    { to: "/profile",         icon: "👤", label: lang === "ar" ? "بروفايلي"                                                           : "My Profile"      },
+                    { to: "/profile",         icon: "🔔", label: lang === "ar" ? `الإشعارات${unreadCount > 0 ? ` (${unreadCount})` : ""}` : "Alerts",  highlight: unreadCount > 0 },
+                    { to: "/favorites",       icon: "❤️", label: lang === "ar" ? "المفضلة"                                                            : "Favorites"       },
+                    { to: "/compare",         icon: "⚖️", label: lang === "ar" ? "المقارنة"                                                           : "Compare"         },
+                    { to: "/recently-viewed", icon: "👀", label: lang === "ar" ? "شاهدتها مؤخراً"                                                     : "Recently Viewed" },
                   ].map((item, i, arr) => (
                     <Link key={i} to={item.to} onClick={() => { setShowUserMenu(false); if (item.highlight) setUnreadCount(0); }}
                       style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 16px", textDecoration: "none", color: item.highlight ? "#16a34a" : "#0f172a", fontSize: "13px", borderBottom: i < arr.length - 1 ? "1px solid #f8fafc" : "none", background: item.highlight ? "#f0fdf4" : "white", transition: "background 0.12s", fontWeight: item.highlight ? "700" : "500" }}
@@ -246,29 +219,27 @@ function Header({ search, setSearch, lang, setLang, user, onLogout, notification
               )}
             </div>
           ) : (
+            /* ← زوار: فقط دخول + تسجيل — بدون زر 🏪 */
             <div style={{ display: "flex", gap: "6px" }}>
-              <Link to="/login" style={{ padding: "7px 14px", borderRadius: "10px", border: "1.5px solid #e2e8f0", color: "#475569", textDecoration: "none", fontSize: "13px", fontWeight: "600", background: "white", transition: "all 0.15s" }}
+              <Link to="/login"
+                style={{ padding: "7px 14px", borderRadius: "10px", border: "1.5px solid #e2e8f0", color: "#475569", textDecoration: "none", fontSize: "13px", fontWeight: "600", background: "white", transition: "all 0.15s" }}
                 onMouseEnter={e => e.currentTarget.style.borderColor = "#94a3b8"}
                 onMouseLeave={e => e.currentTarget.style.borderColor = "#e2e8f0"}>
                 {lang === "ar" ? "دخول" : "Login"}
               </Link>
-              <Link to="/register" style={{ padding: "7px 14px", borderRadius: "10px", background: "linear-gradient(135deg, #22c55e, #16a34a)", color: "white", textDecoration: "none", fontSize: "13px", fontWeight: "700", boxShadow: "0 2px 8px rgba(34,197,94,0.25)", transition: "all 0.15s" }}
+              <Link to="/register"
+                style={{ padding: "7px 14px", borderRadius: "10px", background: "linear-gradient(135deg, #22c55e, #16a34a)", color: "white", textDecoration: "none", fontSize: "13px", fontWeight: "700", boxShadow: "0 2px 8px rgba(34,197,94,0.25)", transition: "all 0.15s" }}
                 onMouseEnter={e => e.currentTarget.style.transform = "translateY(-1px)"}
                 onMouseLeave={e => e.currentTarget.style.transform = "none"}>
                 {lang === "ar" ? "تسجيل" : "Register"}
               </Link>
-              <Link to="/store/login" style={{ width: "36px", height: "36px", borderRadius: "10px", border: "1.5px solid #e2e8f0", background: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", textDecoration: "none", transition: "all 0.15s" }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = "#22c55e"; e.currentTarget.style.background = "#f0fdf4"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.background = "white"; }}>
-                🏪
-              </Link>
+              {/* ← حُذف زر 🏪 دخول المتاجر */}
             </div>
           )}
         </div>
 
-        {/* Hamburger — يظهر على الموبايل فقط */}
-        <button onClick={() => setMobileMenuOpen(p => !p)}
-          className="hamburger-btn"
+        {/* Hamburger */}
+        <button onClick={() => setMobileMenuOpen(p => !p)} className="hamburger-btn"
           style={{ display: "none", width: "38px", height: "38px", borderRadius: "10px", border: "1.5px solid #e2e8f0", background: mobileMenuOpen ? "#f0fdf4" : "white", fontSize: "20px", cursor: "pointer", flexShrink: 0, alignItems: "center", justifyContent: "center", color: mobileMenuOpen ? "#16a34a" : "#475569", transition: "all 0.2s" }}>
           {mobileMenuOpen ? "✕" : "☰"}
         </button>
@@ -283,16 +254,34 @@ function Header({ search, setSearch, lang, setLang, user, onLogout, notification
               {item.label}
             </Link>
           ))}
+
+          {/* زر اللغة على الموبايل */}
+          <div style={{ borderTop: "1px solid #f1f5f9", margin: "8px 0 0", padding: "12px 24px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: "13px", color: "#64748b", fontWeight: "500" }}>{lang === "ar" ? "اللغة" : "Language"}</span>
+            <button onClick={() => { setLang(lang === "ar" ? "en" : "ar"); setMobileMenuOpen(false); }}
+              style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 16px", borderRadius: "10px", border: "1.5px solid #22c55e", background: "#f0fdf4", color: "#16a34a", cursor: "pointer", fontSize: "13px", fontWeight: "700", fontFamily: "Tajawal, sans-serif" }}>
+              🌐 {lang === "ar" ? "English" : "العربية"}
+            </button>
+          </div>
+
           <div style={{ borderTop: "1px solid #f1f5f9", margin: "8px 0", paddingTop: "8px" }}>
             {!user ? (
               <div style={{ display: "flex", gap: "8px", padding: "8px 24px" }}>
-                <Link to="/login" onClick={() => setMobileMenuOpen(false)} style={{ flex: 1, textAlign: "center", padding: "10px", borderRadius: "10px", border: "1.5px solid #e2e8f0", textDecoration: "none", fontSize: "14px", fontWeight: "600", color: "#475569" }}>دخول</Link>
-                <Link to="/register" onClick={() => setMobileMenuOpen(false)} style={{ flex: 1, textAlign: "center", padding: "10px", borderRadius: "10px", background: "linear-gradient(135deg, #22c55e, #16a34a)", textDecoration: "none", fontSize: "14px", fontWeight: "700", color: "white" }}>تسجيل</Link>
+                <Link to="/login" onClick={() => setMobileMenuOpen(false)} style={{ flex: 1, textAlign: "center", padding: "10px", borderRadius: "10px", border: "1.5px solid #e2e8f0", textDecoration: "none", fontSize: "14px", fontWeight: "600", color: "#475569" }}>
+                  {lang === "ar" ? "دخول" : "Login"}
+                </Link>
+                <Link to="/register" onClick={() => setMobileMenuOpen(false)} style={{ flex: 1, textAlign: "center", padding: "10px", borderRadius: "10px", background: "linear-gradient(135deg, #22c55e, #16a34a)", textDecoration: "none", fontSize: "14px", fontWeight: "700", color: "white" }}>
+                  {lang === "ar" ? "تسجيل" : "Register"}
+                </Link>
               </div>
             ) : (
               <>
-                <Link to="/profile" onClick={() => setMobileMenuOpen(false)} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 24px", textDecoration: "none", fontSize: "14px", fontWeight: "500", color: "#0f172a" }}>👤 بروفايلي</Link>
-                <Link to="/favorites" onClick={() => setMobileMenuOpen(false)} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 24px", textDecoration: "none", fontSize: "14px", fontWeight: "500", color: "#0f172a" }}>❤️ المفضلة</Link>
+                <Link to="/profile"   onClick={() => setMobileMenuOpen(false)} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 24px", textDecoration: "none", fontSize: "14px", fontWeight: "500", color: "#0f172a" }}>👤 {lang === "ar" ? "بروفايلي"  : "Profile"   }</Link>
+                <Link to="/favorites" onClick={() => setMobileMenuOpen(false)} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 24px", textDecoration: "none", fontSize: "14px", fontWeight: "500", color: "#0f172a" }}>❤️ {lang === "ar" ? "المفضلة"   : "Favorites" }</Link>
+                <Link to="/compare"   onClick={() => setMobileMenuOpen(false)} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 24px", textDecoration: "none", fontSize: "14px", fontWeight: "500", color: "#0f172a" }}>⚖️ {lang === "ar" ? "المقارنة"  : "Compare"   }</Link>
+                <button onClick={() => { setMobileMenuOpen(false); handleLogout(); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: "10px", padding: "12px 24px", background: "none", border: "none", color: "#ef4444", fontSize: "14px", cursor: "pointer", fontFamily: "Tajawal, sans-serif", textAlign: "right", fontWeight: "600" }}>
+                  🚪 {lang === "ar" ? "تسجيل الخروج" : "Logout"}
+                </button>
               </>
             )}
           </div>
