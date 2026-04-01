@@ -78,16 +78,16 @@ async function checkAndTriggerAlerts(productId) {
 
 async function deleteCacheByPattern(pattern) {
   try {
-   const keys = await redis.safeKeys(pattern);
-if (keys.length > 0) await redis.safeDel(keys); {
-      await redis.del(keys);
+    const keys = await redis.safeKeys(pattern);
+    if (keys.length > 0) {
+      await redis.safeDel(keys);
     }
   } catch (err) {
     console.log("Redis delete pattern error:", err.message);
   }
 }
 
-async function invalidateProductCaches() {
+async function invalidateProductCaches(productId) {
   try {
     await deleteCacheByPattern("products:*");
     await deleteCacheByPattern("search:*");
@@ -95,6 +95,10 @@ async function invalidateProductCaches() {
     await deleteCacheByPattern("groups:*");
     await deleteCacheByPattern("product:*");
     await deleteCacheByPattern("similar:*");
+    // إبطال cache الأسعار للمنتج المحدد
+    if (productId) {
+      await redis.safeDel([`prices:product:${productId}`, `prices:history:${productId}`]);
+    }
   } catch (err) {
     console.log("Cache invalidation error:", err.message);
   }
@@ -161,7 +165,7 @@ router.post("/", async (req, res) => {
     );
 
     await checkAndTriggerAlerts(productId);
-    await invalidateProductCaches();
+    await invalidateProductCaches(productId);
 
     res.json(result.rows[0]);
   } catch (err) {
@@ -197,7 +201,7 @@ router.put("/:id", async (req, res) => {
     );
 
     await checkAndTriggerAlerts(result.rows[0].product_id);
-    await invalidateProductCaches();
+    await invalidateProductCaches(result.rows[0].product_id);
 
     res.json(result.rows[0]);
   } catch (err) {
@@ -210,10 +214,14 @@ router.put("/:id", async (req, res) => {
 ============================== */
 router.get("/product/:id", async (req, res) => {
   try {
+    const cacheKey = `prices:product:${req.params.id}`;
+    const cached = await redis.safeGet(cacheKey);
+    if (cached) return res.json(JSON.parse(cached));
+
     const result = await pool.query(
       `
-      SELECT pr.id, pr.price, s.id AS store_id, s.name AS store_name, 
-s.logo AS store_logo, s.phone, s.whatsapp, s.instagram, 
+      SELECT pr.id, pr.price, s.id AS store_id, s.name AS store_name,
+s.logo AS store_logo, s.phone, s.whatsapp, s.instagram,
 s.facebook, s.website, s.city, s.address
 FROM prices pr JOIN stores s ON pr.store_id = s.id
 WHERE pr.product_id = $1
@@ -222,6 +230,7 @@ ORDER BY pr.price ASC
       [req.params.id]
     );
 
+    await redis.safeSet(cacheKey, JSON.stringify(result.rows), 120); // 2 دقيقة
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -233,6 +242,10 @@ ORDER BY pr.price ASC
 ============================== */
 router.get("/history/:id", async (req, res) => {
   try {
+    const cacheKey = `prices:history:${req.params.id}`;
+    const cached = await redis.safeGet(cacheKey);
+    if (cached) return res.json(JSON.parse(cached));
+
     const result = await pool.query(
       `
       SELECT price, recorded_at AS date
@@ -243,6 +256,7 @@ router.get("/history/:id", async (req, res) => {
       [req.params.id]
     );
 
+    await redis.safeSet(cacheKey, JSON.stringify(result.rows), 300); // 5 دقائق
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });

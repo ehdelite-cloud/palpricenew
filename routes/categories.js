@@ -1,18 +1,25 @@
 const express = require("express");
 const router = express.Router();
-const pool = require("../db/db");
+const pool  = require("../db/db");
+const redis = require("../utils/redis");
+
+const CATEGORIES_TTL = 60 * 60; // ساعة — الفئات تتغير نادراً
 
 /* ==============================
    GET ALL — مع دعم الهرمية
 ============================== */
 router.get("/", async (req, res) => {
   try {
+    const cached = await redis.safeGet("categories:all");
+    if (cached) return res.json(JSON.parse(cached));
+
     const result = await pool.query(`
       SELECT id, name, COALESCE(name_en, name) AS name_en,
              icon, level, parent_id
       FROM categories
       ORDER BY level ASC, id ASC
     `);
+    await redis.safeSet("categories:all", JSON.stringify(result.rows), CATEGORIES_TTL);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -24,12 +31,16 @@ router.get("/", async (req, res) => {
 ============================== */
 router.get("/main", async (req, res) => {
   try {
+    const cached = await redis.safeGet("categories:main");
+    if (cached) return res.json(JSON.parse(cached));
+
     const result = await pool.query(`
       SELECT id, name, COALESCE(name_en, name) AS name_en, icon, level
       FROM categories
       WHERE level = 1
       ORDER BY id ASC
     `);
+    await redis.safeSet("categories:main", JSON.stringify(result.rows), CATEGORIES_TTL);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -58,6 +69,9 @@ router.get("/:id/children", async (req, res) => {
 ============================== */
 router.get("/tree", async (req, res) => {
   try {
+    const cached = await redis.safeGet("categories:tree");
+    if (cached) return res.json(JSON.parse(cached));
+
     const result = await pool.query(`
       SELECT id, name, COALESCE(name_en, name) AS name_en,
              icon, level, parent_id
@@ -78,6 +92,7 @@ router.get("/tree", async (req, res) => {
       }
     });
 
+    await redis.safeSet("categories:tree", JSON.stringify(tree), CATEGORIES_TTL);
     res.json(tree);
   } catch (err) {
     res.status(500).json({ error: err.message });

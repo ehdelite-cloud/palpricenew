@@ -1124,7 +1124,7 @@ export default function AdminDashboard() {
                   </div>
                 ))}
               </div>
-              <a href={`http://localhost:5173/product/${productDetail.id}`} target="_blank" rel="noreferrer" style={{ display: "block", textAlign: "center", padding: "9px", background: "#f1f5f9", borderRadius: "10px", textDecoration: "none", color: "#475569", fontSize: "13px", fontWeight: "600" }}>
+              <a href={`/product/${productDetail.id}`} target="_blank" rel="noreferrer" style={{ display: "block", textAlign: "center", padding: "9px", background: "#f1f5f9", borderRadius: "10px", textDecoration: "none", color: "#475569", fontSize: "13px", fontWeight: "600" }}>
                 🔗 عرض صفحة المنتج
               </a>
             </div>

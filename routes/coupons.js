@@ -195,6 +195,64 @@ router.post("/use", userAuth, async (req, res) => {
 });
 
 /* ==============================
+   PUBLIC — Batch: كوبونات + حملات لقائمة متاجر
+   GET /coupons/batch?stores=1,2,3
+   يُرجع { coupons: { storeId: [...] }, campaigns: { storeId: [...] } }
+============================== */
+router.get("/batch", async (req, res) => {
+  try {
+    const raw = req.query.stores || "";
+    // قبول فقط IDs رقمية
+    const storeIds = raw.split(",").map(s => parseInt(s, 10)).filter(n => !isNaN(n) && n > 0);
+    if (storeIds.length === 0) return res.json({ coupons: {}, campaigns: {} });
+    if (storeIds.length > 50) return res.status(400).json({ error: "Max 50 stores per request" });
+
+    // كوبونات نشطة لكل المتاجر في استعلام واحد
+    const couponsResult = await pool.query(`
+      SELECT id, store_id, code, discount_type, discount_value, min_purchase,
+             description, expires_at, max_uses, used_count
+      FROM coupons
+      WHERE store_id = ANY($1::int[])
+        AND is_active = true
+        AND (expires_at IS NULL OR expires_at > NOW())
+        AND (max_uses IS NULL OR used_count < max_uses)
+      ORDER BY discount_value DESC
+    `, [storeIds]);
+
+    // حملات نشطة لكل المتاجر في استعلام واحد
+    const campaignsResult = await pool.query(`
+      SELECT c.*, cp.code AS coupon_code, cp.discount_type, cp.discount_value
+      FROM campaigns c
+      LEFT JOIN coupons cp ON c.coupon_id = cp.id
+      WHERE c.store_id = ANY($1::int[])
+        AND c.is_active = true
+        AND c.ends_at > NOW()
+      ORDER BY c.created_at DESC
+    `, [storeIds]);
+
+    // تجميع النتائج بـ storeId كمفتاح
+    const coupons   = {};
+    const campaigns = {};
+
+    for (const row of couponsResult.rows) {
+      const sid = String(row.store_id);
+      if (!coupons[sid]) coupons[sid] = [];
+      coupons[sid].push(row);
+    }
+
+    for (const row of campaignsResult.rows) {
+      const sid = String(row.store_id);
+      if (!campaigns[sid]) campaigns[sid] = [];
+      campaigns[sid].push(row);
+    }
+
+    res.json({ coupons, campaigns });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* ==============================
    STORE — إحصائيات كوبون
 ============================== */
 router.get("/:id/stats", storeAuth, async (req, res) => {

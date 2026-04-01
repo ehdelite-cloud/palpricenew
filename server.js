@@ -4,6 +4,7 @@ const path = require("path");
 const fs = require("fs");
 const http = require("http");
 const socketIo = require("socket.io");
+const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
 // ✅ التحقق من المتغيرات الضرورية عند البدء
@@ -25,8 +26,9 @@ const adminRoutes = require("./routes/admin");
 const ticketsRoutes = require("./routes/tickets");
 const couponsRouter = require("./routes/coupons");
 const campaignsRouter = require("./routes/campaigns");
-const { authAdmin } = require("./middleware/auth");
+const { authAdmin, authStore } = require("./middleware/auth");
 const { connectRedis } = require("./utils/redis");
+const rateLimit = require("express-rate-limit");
 
 const app = express();
 const server = http.createServer(app);
@@ -41,14 +43,26 @@ const io = socketIo(server, {
 global.io = io;
 
 io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
   socket.on("join", (data = {}) => {
-    if (data.userId) socket.join(`user_${data.userId}`);
-    else if (data.storeId) socket.join(`store_${data.storeId}`);
+    const token = data.token;
+    if (!token) return;
+
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      // المستخدم يدخل room الخاصة به فقط — لا يمكنه الدخول لـ room شخص آخر
+      if (decoded.role === "store" && data.storeId && String(decoded.id) === String(data.storeId)) {
+        socket.join(`store_${decoded.id}`);
+      } else if (decoded.id && String(decoded.id) === String(data.userId)) {
+        socket.join(`user_${decoded.id}`);
+      } else if (["admin", "moderator"].includes(decoded.role)) {
+        socket.join(`admin_${decoded.id}`);
+      }
+    } catch {
+      // token غير صالح — لا نسمح بالدخول
+    }
   });
-  socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
-  });
+
+  socket.on("disconnect", () => {});
 });
 
 /* ========================= AI MODELS ========================= */
@@ -77,6 +91,51 @@ app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.resolve(__dirname, "uploads")));
 
+/* ========================= RATE LIMITING ========================= */
+// حد عام: 1000 طلب في بيئة التطوير، 300 في الإنتاج — لكل 15 دقيقة
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === "production" ? 300 : 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please try again later." },
+});
+
+// حد مشدد لمحاولات الدخول: 10 محاولات كل 15 دقيقة (حماية Brute Force)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many login attempts, please try again later." },
+});
+
+// حد للتسجيل: 5 حسابات جديدة كل ساعة من نفس IP
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many registration attempts, please try again later." },
+});
+
+// حد صارم جداً للـ AI: 30 طلباً كل دقيقة
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "AI rate limit exceeded, please try again later." },
+});
+
+app.use(generalLimiter);
+app.use("/users/login", loginLimiter);
+app.use("/users/register", registerLimiter);
+app.use("/stores/login", loginLimiter);
+app.use("/stores/register", registerLimiter);
+app.use("/admin/login", loginLimiter);
+app.use("/ai/", aiLimiter);
+
 /* ========================= AI ROUTES (محمية) ========================= */
 app.get("/ai/models", authAdmin, (req, res) => {
   res.json(global.AI_MODELS);
@@ -88,7 +147,7 @@ app.post("/ai/reload-models", authAdmin, (req, res) => {
 });
 
 /* ========================= AI CHAT PROXY ========================= */
-app.post("/ai/chat", async (req, res) => {
+app.post("/ai/chat", authAdmin, async (req, res) => {
   try {
     const { messages, model } = req.body;
     if (!Array.isArray(messages) || messages.length === 0)
@@ -117,7 +176,7 @@ app.post("/ai/chat", async (req, res) => {
 });
 
 /* ========================= AI PRODUCT LOOKUP ========================= */
-app.post("/ai/product-lookup", async (req, res) => {
+app.post("/ai/product-lookup", authStore, async (req, res) => {
   try {
     const { productName, model } = req.body;
     if (!productName?.trim())

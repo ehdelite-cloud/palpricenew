@@ -1069,6 +1069,7 @@ CREATE TABLE public.users (
     id integer NOT NULL,
     name character varying(255),
     email character varying(255),
+    phone character varying(20),
     password text,
     role character varying(50) DEFAULT 'user'::character varying,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,

@@ -41,6 +41,7 @@ import AboutPage        from "./AboutPage";
 import ContactPage      from "./ContactPage";
 
 import { PrivacyPage, FAQPage, JoinStorePage, HowItWorksPage } from "./StaticPages";
+import PrivateRoute, { GuestRoute } from "./components/PrivateRoute";
 
 /* ══════════════════════════════════════════════════════
    Helpers
@@ -138,9 +139,13 @@ function AppContent({ lang, setLang, search, setSearch, user, handleLogin, handl
         <Route path="/recently-viewed" element={<RecentlyViewed lang={lang} user={user} asPage={true} />} />
 
         {/* ── حساب المستخدم ── */}
-        <Route path="/login"    element={<UserLogin    lang={lang} onLogin={handleLogin} />} />
-        <Route path="/register" element={<UserRegister lang={lang} onLogin={handleLogin} />} />
-        <Route path="/profile"  element={<UserProfile  lang={lang} user={user} onLogout={handleLogout} onUpdate={handleLogin} />} />
+        <Route path="/login"    element={<GuestRoute type="user"><UserLogin    lang={lang} onLogin={handleLogin} /></GuestRoute>} />
+        <Route path="/register" element={<GuestRoute type="user"><UserRegister lang={lang} onLogin={handleLogin} /></GuestRoute>} />
+        <Route path="/profile"  element={
+          <PrivateRoute type="user">
+            <UserProfile lang={lang} user={user} onLogout={handleLogout} onUpdate={handleLogin} />
+          </PrivateRoute>
+        } />
 
         {/* ── صفحات معلومات ── */}
         <Route path="/about"        element={<AboutPage       lang={lang} />} />
@@ -151,23 +156,24 @@ function AppContent({ lang, setLang, search, setSearch, user, handleLogin, handl
         <Route path="/join"         element={<JoinStorePage   lang={lang} />} />
 
         {/* ── داشبورد المتجر ── */}
-        <Route path="/store/register"                     element={<StoreRegister    lang={lang} />} />
-        <Route path="/store/login"                        element={<StoreLogin       lang={lang} />} />
-        <Route path="/store/:id"         element={<StorePage    lang={lang} />} />
-        <Route path="/store/dashboard"                    element={<StoreDashboard   lang={lang} />} />
-        <Route path="/store/dashboard/products"           element={<StoreProducts    lang={lang} />} />
-        <Route path="/store/dashboard/add-product"        element={<AddProduct       lang={lang} />} />
-        <Route path="/store/dashboard/smart-add"          element={<SmartAddProduct  lang={lang} />} />
-        <Route path="/store/dashboard/bulk-upload"        element={<BulkUpload       lang={lang} />} />
-        <Route path="/store/dashboard/tickets"            element={<StoreTickets     lang={lang} />} />
-        <Route path="/store/dashboard/tickets/:ticketId"  element={<StoreTickets     lang={lang} />} />
-        <Route path="/store/dashboard/profile"            element={<StoreProfile     lang={lang} />} />
-        <Route path="/store/dashboard/analytics"          element={<StoreAnalytics   lang={lang} />} />
-        <Route path="/store/dashboard/edit-product/:id"   element={<EditProduct      lang={lang} />} />
-        <Route path="/store/dashboard/product-images/:id" element={<ProductImages    lang={lang} />} />
-        <Route path="/store/dashboard/competition"        element={<PriceCompetition lang={lang} />} />
-        <Route path="/store/dashboard/campaigns"          element={<StoreCampaigns   lang={lang} />} />
-        <Route path="/store/dashboard/coupons"            element={<StoreCoupons     lang={lang} />} />
+        <Route path="/store/register" element={<GuestRoute type="store"><StoreRegister lang={lang} /></GuestRoute>} />
+        <Route path="/store/login"    element={<GuestRoute type="store"><StoreLogin    lang={lang} /></GuestRoute>} />
+        <Route path="/store/:id"      element={<StorePage     lang={lang} />} />
+
+        <Route path="/store/dashboard"                    element={<PrivateRoute type="store"><StoreDashboard   lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/products"           element={<PrivateRoute type="store"><StoreProducts    lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/add-product"        element={<PrivateRoute type="store"><AddProduct       lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/smart-add"          element={<PrivateRoute type="store"><SmartAddProduct  lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/bulk-upload"        element={<PrivateRoute type="store"><BulkUpload       lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/tickets"            element={<PrivateRoute type="store"><StoreTickets     lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/tickets/:ticketId"  element={<PrivateRoute type="store"><StoreTickets     lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/profile"            element={<PrivateRoute type="store"><StoreProfile     lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/analytics"          element={<PrivateRoute type="store"><StoreAnalytics   lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/edit-product/:id"   element={<PrivateRoute type="store"><EditProduct      lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/product-images/:id" element={<PrivateRoute type="store"><ProductImages    lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/competition"        element={<PrivateRoute type="store"><PriceCompetition lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/campaigns"          element={<PrivateRoute type="store"><StoreCampaigns   lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/coupons"            element={<PrivateRoute type="store"><StoreCoupons     lang={lang} /></PrivateRoute>} />
 
         {/* ── الأدمن ── */}
         <Route path="/admin" element={<AdminDashboard lang={lang} />} />

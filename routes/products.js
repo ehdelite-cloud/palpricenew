@@ -4,6 +4,7 @@ const pool     = require("../db/db");
 const upload   = require("../middleware/upload");
 const jwt      = require("jsonwebtoken");
 const { safeGet, safeSet, safeKeys, safeDel } = require("../utils/redis");
+const { authUser } = require("../middleware/auth");
 
 /* ============================================================
    HELPERS
@@ -584,7 +585,7 @@ router.get("/:id/reviews", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-router.post("/:id/review", async (req, res) => {
+router.post("/:id/review", authUser, async (req, res) => {
   try {
     const { rating, comment } = req.body;
     const result = await pool.query(

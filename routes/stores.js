@@ -34,7 +34,7 @@ router.post("/login", async (req, res) => {
       return res.status(403).json({ error: "suspended", message: "متجرك معلق حالياً. تواصل مع إدارة PalPrice." });
     const valid = await bcrypt.compare(password, store.rows[0].password);
     if (!valid) return res.status(401).json({ error: "Wrong password" });
-    const token = jwt.sign({ id: store.rows[0].id }, process.env.JWT_SECRET || "secretkey", { expiresIn: "7d" });
+    const token = jwt.sign({ id: store.rows[0].id, role: "store" }, process.env.JWT_SECRET || "secretkey", { expiresIn: "7d" });
     res.json({ message: "Login successful", token, store: store.rows[0].id });
   } catch (err) {
     res.status(500).json({ error: err.message });
