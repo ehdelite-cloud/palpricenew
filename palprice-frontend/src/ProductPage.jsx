@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import SpecsDisplay from "./components/SpecsDisplay";
+import { useToast } from "./components/Toast";
 
 function fixImg(url) {
   if (!url) return "";
@@ -11,6 +12,7 @@ function fixImg(url) {
 function ProductPage({ lang = "ar", user }) {
   const { id }      = useParams();
   const navigate    = useNavigate();
+  const toast       = useToast();
   const [product,      setProduct]      = useState(null);
   const [siblings,     setSiblings]     = useState([]);
   const [offers,       setOffers]       = useState([]);
@@ -99,7 +101,8 @@ function ProductPage({ lang = "ar", user }) {
       if (data.error === "login_required") { navigate("/login"); return; }
       setAlertSent(true); setTargetPrice("");
       setTimeout(() => setAlertSent(false), 4000);
-    });
+      toast.success(lang === "ar" ? "✓ تم إنشاء التنبيه — سنخبرك فور انخفاض السعر" : "Alert created!");
+    }).catch(() => toast.error(lang === "ar" ? "حدث خطأ، حاول مجدداً" : "Something went wrong"));
   }
 
   function addReview() {
@@ -108,12 +111,16 @@ function ProductPage({ lang = "ar", user }) {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${user.token}` },
       body: JSON.stringify({ rating: newRating, comment }),
+    }).then(r => {
+      if (!r.ok) throw new Error();
+      return r.json();
     }).then(() => {
       setComment(""); setReviewSent(true);
       setTimeout(() => setReviewSent(false), 3000);
+      toast.success(lang === "ar" ? "✓ تم إرسال تقييمك بنجاح" : "Review submitted!");
       fetch(`/api/products/${id}/reviews`).then(r => r.json()).then(data => { if (Array.isArray(data)) setReviews(data); });
       fetch(`/api/products/${id}/rating`).then(r => r.json()).then(data => setRatingInfo(data));
-    });
+    }).catch(() => toast.error(lang === "ar" ? "حدث خطأ أثناء إرسال التقييم" : "Failed to submit review"));
   }
 
   function addToCompare() {

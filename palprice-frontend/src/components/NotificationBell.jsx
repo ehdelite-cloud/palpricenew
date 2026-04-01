@@ -81,15 +81,9 @@ function NotificationBell({ mode = "admin", token, lang = "ar", dropdownSide = "
     return { ...base, width: `${dw}px`, top: `${top}px`, bottom: "auto", ...positional };
   })();
 
-  // ── جلب الإشعارات ──
+  // ── جلب الإشعارات عند الفتح الأول فقط (Socket.IO يتولى التحديثات بعدها) ──
   useEffect(() => {
     if (notifications.length === 0) fetchNotifications();
-  }, []);
-
-  // ── polling كل 30 ثانية ──
-  useEffect(() => {
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
   }, []);
 
   // ── close on outside click ──

@@ -8,23 +8,12 @@ function Header({ search, setSearch, lang, setLang, user, onLogout, notification
   const [suggestions,    setSuggestions]    = useState([]);
   const [showUserMenu,   setShowUserMenu]   = useState(false);
   const [scrolled,       setScrolled]       = useState(false);
-  const [unreadCount,    setUnreadCount]    = useState(0);
+  const unreadCount = notifications.filter(n => !n.is_read).length;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const searchRef   = useRef(null);
   const userMenuRef = useRef(null);
 
-  // ── جلب عدد الإشعارات ──
-  useEffect(() => {
-    if (!user?.token) return;
-    function fetchUnread() {
-      fetch("/api/users/notifications/unread-count", {   // ← إصلاح
-        headers: { Authorization: `Bearer ${user.token}` }
-      }).then(r => r.json()).then(d => { if (d.count !== undefined) setUnreadCount(d.count); }).catch(() => {});
-    }
-    fetchUnread();
-    const interval = setInterval(fetchUnread, 30000);
-    return () => clearInterval(interval);
-  }, [user?.token]);
+  // unreadCount مشتق من notifications prop — لا حاجة لـ polling منفصل
 
   useEffect(() => {
     function onScroll() { setScrolled(window.scrollY > 12); }

@@ -42,6 +42,7 @@ import ContactPage      from "./ContactPage";
 
 import { PrivacyPage, FAQPage, JoinStorePage, HowItWorksPage } from "./StaticPages";
 import PrivateRoute, { GuestRoute } from "./components/PrivateRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 /* ══════════════════════════════════════════════════════
    Helpers
@@ -119,6 +120,7 @@ function AppContent({ lang, setLang, search, setSearch, user, handleLogin, handl
           notifications={notifications} setNotifications={setNotifications} />
       )}
 
+      <ErrorBoundary>
       <Routes>
         {/* ── الرئيسية ── */}
         <Route path="/" element={<Home lang={lang} setLang={setLang} search={search} setSearch={setSearch} user={user} />} />
@@ -178,6 +180,7 @@ function AppContent({ lang, setLang, search, setSearch, user, handleLogin, handl
         {/* ── الأدمن ── */}
         <Route path="/admin" element={<AdminDashboard lang={lang} />} />
       </Routes>
+      </ErrorBoundary>
 
       {!hideLayout && <Footer lang={lang} />}
       {!hideLayout && <BottomNav lang={lang} user={user} notifications={notifications} setNotifications={setNotifications} />}
@@ -213,18 +216,45 @@ export default function App() {
       .catch(() => {});
   }, []);
 
-  /* ── 2. جلب الإشعارات تلقائياً كل 30 ثانية ── */
+  /* ── 2. الإشعارات عبر Socket.IO (بدل polling كل 30 ثانية) ── */
   useEffect(() => {
     if (!user?.token) return;
-    function fetchNotifs() {
-      fetch("/api/users/notifications", { headers: { Authorization: `Bearer ${user.token}` } })
-        .then(r => r.json())
-        .then(data => { if (Array.isArray(data)) setNotifications(data); })
-        .catch(() => {});
-    }
-    fetchNotifs();
-    const interval = setInterval(fetchNotifs, 30000);
-    return () => clearInterval(interval);
+
+    // جلب أولي عند تسجيل الدخول
+    fetch("/api/users/notifications", { headers: { Authorization: `Bearer ${user.token}` } })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setNotifications(data); })
+      .catch(() => {});
+
+    // اتصال Socket.IO للإشعارات الفورية
+    import("socket.io-client").then(({ io }) => {
+      const socket = io(window.location.origin, { transports: ["websocket", "polling"] });
+
+      socket.on("connect", () => {
+        // انضم للـ room الخاص بالمستخدم
+        socket.emit("join", { token: user.token, userId: user.id });
+      });
+
+      socket.on("new_notification", (notif) => {
+        setNotifications(prev => [notif, ...prev]);
+      });
+
+      socket.on("notifications_update", (data) => {
+        if (Array.isArray(data)) setNotifications(data);
+      });
+
+      // تنظيف عند تسجيل الخروج أو تغيير المستخدم
+      return () => socket.disconnect();
+    }).catch(() => {
+      // fallback: polling إذا فشل تحميل socket.io-client
+      const interval = setInterval(() => {
+        fetch("/api/users/notifications", { headers: { Authorization: `Bearer ${user.token}` } })
+          .then(r => r.json())
+          .then(data => { if (Array.isArray(data)) setNotifications(data); })
+          .catch(() => {});
+      }, 30000);
+      return () => clearInterval(interval);
+    });
   }, [user?.token]);
 
   /* ── 3. Auto-logout بعد 60 دقيقة من عدم النشاط ── */
