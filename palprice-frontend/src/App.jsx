@@ -41,6 +41,8 @@ import AboutPage        from "./AboutPage";
 import ContactPage      from "./ContactPage";
 
 import { PrivacyPage, FAQPage, JoinStorePage, HowItWorksPage } from "./StaticPages";
+import PrivateRoute, { GuestRoute } from "./components/PrivateRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 /* ══════════════════════════════════════════════════════
    Helpers
@@ -118,6 +120,7 @@ function AppContent({ lang, setLang, search, setSearch, user, handleLogin, handl
           notifications={notifications} setNotifications={setNotifications} />
       )}
 
+      <ErrorBoundary>
       <Routes>
         {/* ── الرئيسية ── */}
         <Route path="/" element={<Home lang={lang} setLang={setLang} search={search} setSearch={setSearch} user={user} />} />
@@ -138,9 +141,13 @@ function AppContent({ lang, setLang, search, setSearch, user, handleLogin, handl
         <Route path="/recently-viewed" element={<RecentlyViewed lang={lang} user={user} asPage={true} />} />
 
         {/* ── حساب المستخدم ── */}
-        <Route path="/login"    element={<UserLogin    lang={lang} onLogin={handleLogin} />} />
-        <Route path="/register" element={<UserRegister lang={lang} onLogin={handleLogin} />} />
-        <Route path="/profile"  element={<UserProfile  lang={lang} user={user} onLogout={handleLogout} onUpdate={handleLogin} />} />
+        <Route path="/login"    element={<GuestRoute type="user"><UserLogin    lang={lang} onLogin={handleLogin} /></GuestRoute>} />
+        <Route path="/register" element={<GuestRoute type="user"><UserRegister lang={lang} onLogin={handleLogin} /></GuestRoute>} />
+        <Route path="/profile"  element={
+          <PrivateRoute type="user">
+            <UserProfile lang={lang} user={user} onLogout={handleLogout} onUpdate={handleLogin} />
+          </PrivateRoute>
+        } />
 
         {/* ── صفحات معلومات ── */}
         <Route path="/about"        element={<AboutPage       lang={lang} />} />
@@ -151,27 +158,29 @@ function AppContent({ lang, setLang, search, setSearch, user, handleLogin, handl
         <Route path="/join"         element={<JoinStorePage   lang={lang} />} />
 
         {/* ── داشبورد المتجر ── */}
-        <Route path="/store/register"                     element={<StoreRegister    lang={lang} />} />
-        <Route path="/store/login"                        element={<StoreLogin       lang={lang} />} />
-        <Route path="/store/:id"         element={<StorePage    lang={lang} />} />
-        <Route path="/store/dashboard"                    element={<StoreDashboard   lang={lang} />} />
-        <Route path="/store/dashboard/products"           element={<StoreProducts    lang={lang} />} />
-        <Route path="/store/dashboard/add-product"        element={<AddProduct       lang={lang} />} />
-        <Route path="/store/dashboard/smart-add"          element={<SmartAddProduct  lang={lang} />} />
-        <Route path="/store/dashboard/bulk-upload"        element={<BulkUpload       lang={lang} />} />
-        <Route path="/store/dashboard/tickets"            element={<StoreTickets     lang={lang} />} />
-        <Route path="/store/dashboard/tickets/:ticketId"  element={<StoreTickets     lang={lang} />} />
-        <Route path="/store/dashboard/profile"            element={<StoreProfile     lang={lang} />} />
-        <Route path="/store/dashboard/analytics"          element={<StoreAnalytics   lang={lang} />} />
-        <Route path="/store/dashboard/edit-product/:id"   element={<EditProduct      lang={lang} />} />
-        <Route path="/store/dashboard/product-images/:id" element={<ProductImages    lang={lang} />} />
-        <Route path="/store/dashboard/competition"        element={<PriceCompetition lang={lang} />} />
-        <Route path="/store/dashboard/campaigns"          element={<StoreCampaigns   lang={lang} />} />
-        <Route path="/store/dashboard/coupons"            element={<StoreCoupons     lang={lang} />} />
+        <Route path="/store/register" element={<GuestRoute type="store"><StoreRegister lang={lang} /></GuestRoute>} />
+        <Route path="/store/login"    element={<GuestRoute type="store"><StoreLogin    lang={lang} /></GuestRoute>} />
+        <Route path="/store/:id"      element={<StorePage     lang={lang} />} />
+
+        <Route path="/store/dashboard"                    element={<PrivateRoute type="store"><StoreDashboard   lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/products"           element={<PrivateRoute type="store"><StoreProducts    lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/add-product"        element={<PrivateRoute type="store"><AddProduct       lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/smart-add"          element={<PrivateRoute type="store"><SmartAddProduct  lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/bulk-upload"        element={<PrivateRoute type="store"><BulkUpload       lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/tickets"            element={<PrivateRoute type="store"><StoreTickets     lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/tickets/:ticketId"  element={<PrivateRoute type="store"><StoreTickets     lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/profile"            element={<PrivateRoute type="store"><StoreProfile     lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/analytics"          element={<PrivateRoute type="store"><StoreAnalytics   lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/edit-product/:id"   element={<PrivateRoute type="store"><EditProduct      lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/product-images/:id" element={<PrivateRoute type="store"><ProductImages    lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/competition"        element={<PrivateRoute type="store"><PriceCompetition lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/campaigns"          element={<PrivateRoute type="store"><StoreCampaigns   lang={lang} /></PrivateRoute>} />
+        <Route path="/store/dashboard/coupons"            element={<PrivateRoute type="store"><StoreCoupons     lang={lang} /></PrivateRoute>} />
 
         {/* ── الأدمن ── */}
         <Route path="/admin" element={<AdminDashboard lang={lang} />} />
       </Routes>
+      </ErrorBoundary>
 
       {!hideLayout && <Footer lang={lang} />}
       {!hideLayout && <BottomNav lang={lang} user={user} notifications={notifications} setNotifications={setNotifications} />}
@@ -207,18 +216,45 @@ export default function App() {
       .catch(() => {});
   }, []);
 
-  /* ── 2. جلب الإشعارات تلقائياً كل 30 ثانية ── */
+  /* ── 2. الإشعارات عبر Socket.IO (بدل polling كل 30 ثانية) ── */
   useEffect(() => {
     if (!user?.token) return;
-    function fetchNotifs() {
-      fetch("/api/users/notifications", { headers: { Authorization: `Bearer ${user.token}` } })
-        .then(r => r.json())
-        .then(data => { if (Array.isArray(data)) setNotifications(data); })
-        .catch(() => {});
-    }
-    fetchNotifs();
-    const interval = setInterval(fetchNotifs, 30000);
-    return () => clearInterval(interval);
+
+    // جلب أولي عند تسجيل الدخول
+    fetch("/api/users/notifications", { headers: { Authorization: `Bearer ${user.token}` } })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setNotifications(data); })
+      .catch(() => {});
+
+    // اتصال Socket.IO للإشعارات الفورية
+    import("socket.io-client").then(({ io }) => {
+      const socket = io(window.location.origin, { transports: ["websocket", "polling"] });
+
+      socket.on("connect", () => {
+        // انضم للـ room الخاص بالمستخدم
+        socket.emit("join", { token: user.token, userId: user.id });
+      });
+
+      socket.on("new_notification", (notif) => {
+        setNotifications(prev => [notif, ...prev]);
+      });
+
+      socket.on("notifications_update", (data) => {
+        if (Array.isArray(data)) setNotifications(data);
+      });
+
+      // تنظيف عند تسجيل الخروج أو تغيير المستخدم
+      return () => socket.disconnect();
+    }).catch(() => {
+      // fallback: polling إذا فشل تحميل socket.io-client
+      const interval = setInterval(() => {
+        fetch("/api/users/notifications", { headers: { Authorization: `Bearer ${user.token}` } })
+          .then(r => r.json())
+          .then(data => { if (Array.isArray(data)) setNotifications(data); })
+          .catch(() => {});
+      }, 30000);
+      return () => clearInterval(interval);
+    });
   }, [user?.token]);
 
   /* ── 3. Auto-logout بعد 60 دقيقة من عدم النشاط ── */

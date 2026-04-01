@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import SpecsDisplay from "./components/SpecsDisplay";
+import { useToast } from "./components/Toast";
+import { useProduct } from "./hooks/useProduct";
 
 function fixImg(url) {
   if (!url) return "";
@@ -9,32 +11,39 @@ function fixImg(url) {
 }
 
 function ProductPage({ lang = "ar", user }) {
-  const { id }      = useParams();
-  const navigate    = useNavigate();
-  const [product,      setProduct]      = useState(null);
-  const [siblings,     setSiblings]     = useState([]);
-  const [offers,       setOffers]       = useState([]);
-  const [history,      setHistory]      = useState([]);
-  const [images,       setImages]       = useState([]);
-  const [activeImage,  setActiveImage]  = useState("");
-  const [zoom,         setZoom]         = useState(false);
-  const [targetPrice,  setTargetPrice]  = useState("");
-  const [reviews,      setReviews]      = useState([]);
-  const [newRating,    setNewRating]    = useState(5);
-  const [comment,      setComment]      = useState("");
-  const [ratingInfo,   setRatingInfo]   = useState(null);
-  const [similar,      setSimilar]      = useState([]);
-  const [alertSent,    setAlertSent]    = useState(false);
-  const [storeCoupons, setStoreCoupons] = useState({});
-  const [copiedCoupon, setCopiedCoupon] = useState(null);
-  const [storeCampaign,setStoreCampaign]= useState(null);
-  const [reviewSent,   setReviewSent]   = useState(false);
-  const [isFavorited,  setIsFavorited]  = useState(false);
-  const [activeTab,    setActiveTab]    = useState("prices");
-  const [compareMsg, setCompareMsg] = useState(null);
-  const [showAllImages, setShowAllImages] = useState(false);
+  const { id }   = useParams();
+  const navigate = useNavigate();
+  const toast    = useToast();
+
+  const {
+    product, siblings, offers, history, images,
+    reviews, ratingInfo, similar,
+    storeCoupons, storeCampaign,
+    isFavorited, loading,
+    setStoreCoupons, setStoreCampaign, setIsFavorited,
+    setReviews, setRatingInfo,
+    activeImage: defaultImage,
+  } = useProduct(id, user?.token);
+
+  const [activeImage,     setActiveImage]     = useState("");
+  const [zoom,            setZoom]            = useState(false);
+  const [targetPrice,     setTargetPrice]     = useState("");
+  const [newRating,       setNewRating]       = useState(5);
+  const [comment,         setComment]         = useState("");
+  const [alertSent,       setAlertSent]       = useState(false);
+  const [copiedCoupon,    setCopiedCoupon]    = useState(null);
+  const [reviewSent,      setReviewSent]      = useState(false);
+  const [activeTab,       setActiveTab]       = useState("prices");
+  const [compareMsg,      setCompareMsg]      = useState(null);
+  const [showAllImages,   setShowAllImages]   = useState(false);
   const [showAllSiblings, setShowAllSiblings] = useState(false);
 
+  // Sync active image when product loads
+  useEffect(() => {
+    if (defaultImage) setActiveImage(defaultImage);
+  }, [defaultImage]);
+
+  // Track recently viewed + viewed API call
   useEffect(() => {
     let viewed = JSON.parse(localStorage.getItem("recent")) || [];
     viewed = viewed.filter(v => v != id);
@@ -44,39 +53,9 @@ function ProductPage({ lang = "ar", user }) {
 
     if (user?.token) {
       fetch(`/api/users/viewed/${id}`, { method: "POST", headers: { Authorization: `Bearer ${user.token}` } }).catch(() => {});
-      fetch("/api/users/favorites", { headers: { Authorization: `Bearer ${user.token}` } })
-        .then(r => r.json()).then(data => {
-          if (Array.isArray(data)) setIsFavorited(data.some(p => String(p.id) === String(id)));
-        }).catch(() => {});
     }
 
-    fetch(`/api/products/${id}`).then(r => r.json()).then(data => {
-      setProduct(data);
-      setSiblings(data.siblings || []);
-      if (data?.image) setActiveImage(fixImg(data.image));
-    });
-    fetch(`/api/products/${id}/images`).then(r => r.json()).then(data => {
-      if (Array.isArray(data)) setImages(data);
-    });
-    fetch(`/api/prices/product/${id}`).then(r => r.json()).then(data => {
-      if (!Array.isArray(data)) return;
-      setOffers(data);
-      const storeIds = [...new Set(data.map(o => o.store_id).filter(Boolean))];
-      storeIds.forEach(storeId => {
-        fetch(`/api/coupons/store/${storeId}`).then(r => r.json())
-          .then(c => { if (Array.isArray(c) && c.length > 0) setStoreCoupons(prev => ({ ...prev, [storeId]: c })); }).catch(() => {});
-        fetch(`/api/campaigns/store/${storeId}`).then(r => r.json())
-          .then(c => { if (Array.isArray(c) && c.length > 0) setStoreCampaign(prev => prev || { ...c[0], storeId }); }).catch(() => {});
-      });
-    });
-    fetch(`/api/prices/history/${id}`).then(r => r.json()).then(data => {
-      if (!Array.isArray(data)) return;
-      setHistory(data.map(item => ({ price: Number(item.price), date: new Date(item.date).toLocaleDateString("ar-PS") })));
-    });
-    fetch(`/api/products/${id}/reviews`).then(r => r.json()).then(data => { if (Array.isArray(data)) setReviews(data); });
-    fetch(`/api/products/${id}/rating`).then(r => r.json()).then(data => setRatingInfo(data));
-    fetch(`/api/products/${id}/similar`).then(r => r.json()).then(data => { if (Array.isArray(data)) setSimilar(data.slice(0, 8)); });
-    setStoreCampaign(null); setStoreCoupons({}); setSiblings([]); setActiveTab("prices");
+    setActiveTab("prices");
   }, [id, user]);
 
   function createAlert() {
@@ -89,20 +68,26 @@ function ProductPage({ lang = "ar", user }) {
       if (data.error === "login_required") { navigate("/login"); return; }
       setAlertSent(true); setTargetPrice("");
       setTimeout(() => setAlertSent(false), 4000);
-    });
+      toast.success(lang === "ar" ? "✓ تم إنشاء التنبيه — سنخبرك فور انخفاض السعر" : "Alert created!");
+    }).catch(() => toast.error(lang === "ar" ? "حدث خطأ، حاول مجدداً" : "Something went wrong"));
   }
 
   function addReview() {
-    if (!comment.trim()) return;
+    if (!comment.trim() || !user?.token) return;
     fetch(`/api/products/${id}/review`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${user.token}` },
       body: JSON.stringify({ rating: newRating, comment }),
+    }).then(r => {
+      if (!r.ok) throw new Error();
+      return r.json();
     }).then(() => {
       setComment(""); setReviewSent(true);
       setTimeout(() => setReviewSent(false), 3000);
+      toast.success(lang === "ar" ? "✓ تم إرسال تقييمك بنجاح" : "Review submitted!");
       fetch(`/api/products/${id}/reviews`).then(r => r.json()).then(data => { if (Array.isArray(data)) setReviews(data); });
       fetch(`/api/products/${id}/rating`).then(r => r.json()).then(data => setRatingInfo(data));
-    });
+    }).catch(() => toast.error(lang === "ar" ? "حدث خطأ أثناء إرسال التقييم" : "Failed to submit review"));
   }
 
   function addToCompare() {
@@ -503,16 +488,26 @@ function ProductPage({ lang = "ar", user }) {
         {activeTab === "reviews" && (
           <div style={{ maxWidth: "700px" }}>
             <h2 style={{ fontSize: "17px", fontWeight: "800", color: "#0f172a", marginBottom: "20px" }}>⭐ {lang === "ar" ? "التقييمات" : "Reviews"}</h2>
-            <div style={{ background: "white", borderRadius: "16px", border: "1px solid #e2e8f0", padding: "22px", marginBottom: "16px" }}>
-              <p style={{ fontSize: "14px", fontWeight: "700", color: "#0f172a", margin: "0 0 12px" }}>✍️ {lang === "ar" ? "أضف تقييمك" : "Add Review"}</p>
-              <div style={{ display: "flex", gap: "5px", marginBottom: "12px" }}>
-                {[1,2,3,4,5].map(s => <span key={s} onClick={() => setNewRating(s)} style={{ fontSize: "28px", cursor: "pointer", color: s <= newRating ? "#f59e0b" : "#e2e8f0", transition: "transform 0.1s" }} onMouseEnter={e => e.currentTarget.style.transform="scale(1.2)"} onMouseLeave={e => e.currentTarget.style.transform="scale(1)"}>★</span>)}
+            {!user ? (
+              <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "16px", padding: "24px", textAlign: "center", marginBottom: "16px" }}>
+                <p style={{ fontSize: "15px", color: "#166534", fontWeight: "600", marginBottom: "16px" }}>🔒 {lang === "ar" ? "سجّل دخولك لإضافة تقييم" : "Login to add a review"}</p>
+                <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+                  <a href="/login" style={{ padding: "9px 22px", background: "#22c55e", color: "white", borderRadius: "10px", textDecoration: "none", fontSize: "14px", fontWeight: "600" }}>{lang === "ar" ? "دخول" : "Login"}</a>
+                  <a href="/register" style={{ padding: "9px 22px", background: "white", color: "#166534", border: "1.5px solid #bbf7d0", borderRadius: "10px", textDecoration: "none", fontSize: "14px", fontWeight: "600" }}>{lang === "ar" ? "حساب جديد" : "Register"}</a>
+                </div>
               </div>
-              <textarea placeholder={lang === "ar" ? "اكتب تجربتك..." : "Write your review..."} value={comment} onChange={e => setComment(e.target.value)} rows={3} style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1.5px solid #e2e8f0", fontSize: "14px", resize: "vertical", marginBottom: "12px", fontFamily: "Tajawal, sans-serif", outline: "none", boxSizing: "border-box" }} onFocus={e => e.target.style.borderColor="#22c55e"} onBlur={e => e.target.style.borderColor="#e2e8f0"} />
-              {reviewSent
-                ? <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#16a34a", padding: "10px 16px", borderRadius: "8px", fontSize: "14px" }}>✓ {lang === "ar" ? "تم الإرسال!" : "Submitted!"}</div>
-                : <button onClick={addReview} disabled={!comment.trim()} style={{ padding: "10px 22px", background: comment.trim() ? "#22c55e" : "#f1f5f9", color: comment.trim() ? "white" : "#94a3b8", border: "none", borderRadius: "10px", fontSize: "13px", fontWeight: "600", cursor: comment.trim() ? "pointer" : "not-allowed", fontFamily: "Tajawal, sans-serif" }}>{lang === "ar" ? "إرسال" : "Submit"}</button>}
-            </div>
+            ) : (
+              <div style={{ background: "white", borderRadius: "16px", border: "1px solid #e2e8f0", padding: "22px", marginBottom: "16px" }}>
+                <p style={{ fontSize: "14px", fontWeight: "700", color: "#0f172a", margin: "0 0 12px" }}>✍️ {lang === "ar" ? "أضف تقييمك" : "Add Review"}</p>
+                <div style={{ display: "flex", gap: "5px", marginBottom: "12px" }}>
+                  {[1,2,3,4,5].map(s => <span key={s} onClick={() => setNewRating(s)} style={{ fontSize: "28px", cursor: "pointer", color: s <= newRating ? "#f59e0b" : "#e2e8f0", transition: "transform 0.1s" }} onMouseEnter={e => e.currentTarget.style.transform="scale(1.2)"} onMouseLeave={e => e.currentTarget.style.transform="scale(1)"}>★</span>)}
+                </div>
+                <textarea placeholder={lang === "ar" ? "اكتب تجربتك..." : "Write your review..."} value={comment} onChange={e => setComment(e.target.value)} rows={3} style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1.5px solid #e2e8f0", fontSize: "14px", resize: "vertical", marginBottom: "12px", fontFamily: "Tajawal, sans-serif", outline: "none", boxSizing: "border-box" }} onFocus={e => e.target.style.borderColor="#22c55e"} onBlur={e => e.target.style.borderColor="#e2e8f0"} />
+                {reviewSent
+                  ? <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#16a34a", padding: "10px 16px", borderRadius: "8px", fontSize: "14px" }}>✓ {lang === "ar" ? "تم الإرسال!" : "Submitted!"}</div>
+                  : <button onClick={addReview} disabled={!comment.trim()} style={{ padding: "10px 22px", background: comment.trim() ? "#22c55e" : "#f1f5f9", color: comment.trim() ? "white" : "#94a3b8", border: "none", borderRadius: "10px", fontSize: "13px", fontWeight: "600", cursor: comment.trim() ? "pointer" : "not-allowed", fontFamily: "Tajawal, sans-serif" }}>{lang === "ar" ? "إرسال" : "Submit"}</button>}
+              </div>
+            )}
             {reviews.length > 0
               ? <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                   {reviews.map((r, i) => (

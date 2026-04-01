@@ -62,16 +62,16 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ error: "Phone already registered" });
  
     const hash = await bcrypt.hash(password, 10);
- 
+
     const result = await pool.query(
-      `INSERT INTO users (name, email, phone, password_hash, role)
+      `INSERT INTO users (name, email, phone, password, role)
        VALUES ($1, $2, $3, $4, 'user')
        RETURNING id, name, email, phone, avatar, role, created_at`,
       [name, email, phone, hash]
     );
- 
+
     const token = jwt.sign(
-      { id: result.rows[0].id },
+      { id: result.rows[0].id, role: result.rows[0].role },
       process.env.JWT_SECRET || "secretkey",
       { expiresIn: "30d" }
     );
@@ -106,13 +106,12 @@ router.post("/login", async (req, res) => {
     if (user.rows[0].is_banned)
       return res.status(403).json({ error: "banned", message: user.rows[0].ban_reason || "Account banned" });
  
-    const hash = user.rows[0].password_hash || user.rows[0].password;
-const valid = await bcrypt.compare(password, hash);
+    const valid = await bcrypt.compare(password, user.rows[0].password);
     if (!valid)
       return res.status(401).json({ error: "Wrong password" });
  
     const token = jwt.sign(
-      { id: user.rows[0].id },
+      { id: user.rows[0].id, role: user.rows[0].role },
       process.env.JWT_SECRET || "secretkey",
       { expiresIn: "30d" }
     );

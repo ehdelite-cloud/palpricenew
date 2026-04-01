@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import { BrowserRouter, useLocation } from "react-router-dom"
 import { useEffect } from "react"
+import ErrorBoundary from "./components/ErrorBoundary.jsx"
+import { ToastProvider } from "./components/Toast.jsx"
 import "./index.css";
 
 function ScrollToTop() {
@@ -14,8 +16,12 @@ function ScrollToTop() {
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <BrowserRouter>
-    <ScrollToTop />
-    <App />
-  </BrowserRouter>
+  <ErrorBoundary>
+    <ToastProvider>
+      <BrowserRouter>
+        <ScrollToTop />
+        <App />
+      </BrowserRouter>
+    </ToastProvider>
+  </ErrorBoundary>
 )
