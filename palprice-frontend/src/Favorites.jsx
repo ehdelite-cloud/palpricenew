@@ -1,26 +1,22 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import ProductCard from "./components/ProductCard";
+import { useFetch } from "./hooks/useFetch";
 
 function Favorites({ lang = "ar", user }) {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [search, setSearch]     = useState("");
+  const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    if (!user) { setLoading(false); return; }
-    fetch("/api/users/favorites", {
-      headers: { Authorization: `Bearer ${user.token}` }
-    }).then(r => r.json())
-      .then(data => { if (Array.isArray(data)) setProducts(data); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [user]);
+  const { data, loading, setData: setProducts } = useFetch(
+    user ? "/api/users/favorites" : null,
+    { token: user?.token, fallback: [] }
+  );
+  const products = Array.isArray(data) ? data : [];
 
   async function removeFavorite(productId) {
     await fetch(`/api/users/favorites/${productId}`, {
       method: "DELETE", headers: { Authorization: `Bearer ${user.token}` }
     });
-    setProducts(prev => prev.filter(p => p.id !== productId));
+    setProducts(prev => (prev || []).filter(p => p.id !== productId));
   }
 
   const filtered = products.filter(p =>

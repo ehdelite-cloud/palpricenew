@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import SpecsDisplay from "./components/SpecsDisplay";
 import { useToast } from "./components/Toast";
+import { useProduct } from "./hooks/useProduct";
 
 function fixImg(url) {
   if (!url) return "";
@@ -10,33 +11,39 @@ function fixImg(url) {
 }
 
 function ProductPage({ lang = "ar", user }) {
-  const { id }      = useParams();
-  const navigate    = useNavigate();
-  const toast       = useToast();
-  const [product,      setProduct]      = useState(null);
-  const [siblings,     setSiblings]     = useState([]);
-  const [offers,       setOffers]       = useState([]);
-  const [history,      setHistory]      = useState([]);
-  const [images,       setImages]       = useState([]);
-  const [activeImage,  setActiveImage]  = useState("");
-  const [zoom,         setZoom]         = useState(false);
-  const [targetPrice,  setTargetPrice]  = useState("");
-  const [reviews,      setReviews]      = useState([]);
-  const [newRating,    setNewRating]    = useState(5);
-  const [comment,      setComment]      = useState("");
-  const [ratingInfo,   setRatingInfo]   = useState(null);
-  const [similar,      setSimilar]      = useState([]);
-  const [alertSent,    setAlertSent]    = useState(false);
-  const [storeCoupons, setStoreCoupons] = useState({});
-  const [copiedCoupon, setCopiedCoupon] = useState(null);
-  const [storeCampaign,setStoreCampaign]= useState(null);
-  const [reviewSent,   setReviewSent]   = useState(false);
-  const [isFavorited,  setIsFavorited]  = useState(false);
-  const [activeTab,    setActiveTab]    = useState("prices");
-  const [compareMsg, setCompareMsg] = useState(null);
-  const [showAllImages, setShowAllImages] = useState(false);
+  const { id }   = useParams();
+  const navigate = useNavigate();
+  const toast    = useToast();
+
+  const {
+    product, siblings, offers, history, images,
+    reviews, ratingInfo, similar,
+    storeCoupons, storeCampaign,
+    isFavorited, loading,
+    setStoreCoupons, setStoreCampaign, setIsFavorited,
+    setReviews, setRatingInfo,
+    activeImage: defaultImage,
+  } = useProduct(id, user?.token);
+
+  const [activeImage,     setActiveImage]     = useState("");
+  const [zoom,            setZoom]            = useState(false);
+  const [targetPrice,     setTargetPrice]     = useState("");
+  const [newRating,       setNewRating]       = useState(5);
+  const [comment,         setComment]         = useState("");
+  const [alertSent,       setAlertSent]       = useState(false);
+  const [copiedCoupon,    setCopiedCoupon]    = useState(null);
+  const [reviewSent,      setReviewSent]      = useState(false);
+  const [activeTab,       setActiveTab]       = useState("prices");
+  const [compareMsg,      setCompareMsg]      = useState(null);
+  const [showAllImages,   setShowAllImages]   = useState(false);
   const [showAllSiblings, setShowAllSiblings] = useState(false);
 
+  // Sync active image when product loads
+  useEffect(() => {
+    if (defaultImage) setActiveImage(defaultImage);
+  }, [defaultImage]);
+
+  // Track recently viewed + viewed API call
   useEffect(() => {
     let viewed = JSON.parse(localStorage.getItem("recent")) || [];
     viewed = viewed.filter(v => v != id);
@@ -46,49 +53,9 @@ function ProductPage({ lang = "ar", user }) {
 
     if (user?.token) {
       fetch(`/api/users/viewed/${id}`, { method: "POST", headers: { Authorization: `Bearer ${user.token}` } }).catch(() => {});
-      fetch("/api/users/favorites", { headers: { Authorization: `Bearer ${user.token}` } })
-        .then(r => r.json()).then(data => {
-          if (Array.isArray(data)) setIsFavorited(data.some(p => String(p.id) === String(id)));
-        }).catch(() => {});
     }
 
-    fetch(`/api/products/${id}`).then(r => r.json()).then(data => {
-      setProduct(data);
-      setSiblings(data.siblings || []);
-      if (data?.image) setActiveImage(fixImg(data.image));
-    });
-    fetch(`/api/products/${id}/images`).then(r => r.json()).then(data => {
-      if (Array.isArray(data)) setImages(data);
-    });
-    fetch(`/api/prices/product/${id}`).then(r => r.json()).then(data => {
-      if (!Array.isArray(data)) return;
-      setOffers(data);
-      const storeIds = [...new Set(data.map(o => o.store_id).filter(Boolean))];
-      if (storeIds.length === 0) return;
-      // Batch fetch: كوبونات + حملات لكل المتاجر في طلب واحد بدل N طلبات
-      fetch(`/api/coupons/batch?stores=${storeIds.join(",")}`)
-        .then(r => r.json())
-        .then(({ coupons = {}, campaigns = {} }) => {
-          if (Object.keys(coupons).length > 0) setStoreCoupons(coupons);
-          // أول حملة نشطة من أي متجر
-          for (const sid of storeIds) {
-            const arr = campaigns[String(sid)];
-            if (arr && arr.length > 0) {
-              setStoreCampaign({ ...arr[0], storeId: sid });
-              break;
-            }
-          }
-        })
-        .catch(() => {});
-    });
-    fetch(`/api/prices/history/${id}`).then(r => r.json()).then(data => {
-      if (!Array.isArray(data)) return;
-      setHistory(data.map(item => ({ price: Number(item.price), date: new Date(item.date).toLocaleDateString("ar-PS") })));
-    });
-    fetch(`/api/products/${id}/reviews`).then(r => r.json()).then(data => { if (Array.isArray(data)) setReviews(data); });
-    fetch(`/api/products/${id}/rating`).then(r => r.json()).then(data => setRatingInfo(data));
-    fetch(`/api/products/${id}/similar`).then(r => r.json()).then(data => { if (Array.isArray(data)) setSimilar(data.slice(0, 8)); });
-    setStoreCampaign(null); setStoreCoupons({}); setSiblings([]); setActiveTab("prices");
+    setActiveTab("prices");
   }, [id, user]);
 
   function createAlert() {

@@ -1,44 +1,24 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import ProductCard from "./components/ProductCard";
+import { useStore } from "./hooks/useStore";
 
 const PRODUCTS_PER_PAGE = 12;
 
 function StorePage({ lang = "ar" }) {
   const { id } = useParams();
-  const [store,      setStore]      = useState(null);
-  const [products,   setProducts]   = useState([]);
-  const [rating,     setRating]     = useState(null);
+
+  const { store, products, rating, tree, loading, setRating } = useStore(id);
+
   const [userRating, setUserRating] = useState(5);
   const [comment,    setComment]    = useState("");
   const [reviewSent, setReviewSent] = useState(false);
-  const [loading,    setLoading]    = useState(true);
   const [activeTab,  setActiveTab]  = useState("products");
   const [search,     setSearch]     = useState("");
   const [sort,       setSort]       = useState("");
   const [page,       setPage]       = useState(1);
-  const [tree,       setTree]       = useState([]);
   const [activeMainId, setActiveMainId] = useState(null);
   const [activeSubId,  setActiveSubId]  = useState(null);
-
-  useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      fetch(`/api/stores/${id}`).then(r => r.json()),
-      fetch(`/api/stores/${id}/products`).then(r => r.json()),
-      fetch(`/api/stores/${id}/rating`).then(r => r.json()),
-      fetch("/api/categories/tree").then(r => r.json()),
-    ]).then(([storeData, productsData, ratingData, treeData]) => {
-      setStore(storeData);
-      const approved = Array.isArray(productsData)
-        ? productsData.filter(p => p.status === "approved")
-        : [];
-      setProducts(approved);
-      setRating(ratingData);
-      if (Array.isArray(treeData)) setTree(treeData);
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  }, [id]);
 
   async function submitReview() {
     if (!comment.trim()) return;

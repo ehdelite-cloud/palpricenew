@@ -1,30 +1,26 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useFetch } from "./hooks/useFetch";
 
 function StoresList({ lang = "ar" }) {
-  const [stores, setStores]   = useState([]);
-  const [ratings, setRatings] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch]   = useState("");
+  const [ratings,    setRatings]    = useState({});
+  const [search,     setSearch]     = useState("");
   const [cityFilter, setCityFilter] = useState("");
 
+  const { data, loading } = useFetch("/api/stores", { fallback: [] });
+  const stores = Array.isArray(data) ? data : [];
+
+  // Fetch ratings for each store once stores are loaded
   useEffect(() => {
-    fetch("/api/stores")
-      .then(r => r.json())
-      .then(async data => {
-        if (!Array.isArray(data)) { setLoading(false); return; }
-        setStores(data);
-        const ratingsMap = {};
-        await Promise.all(data.map(async store => {
-          try {
-            const r = await fetch(`/api/stores/${store.id}/rating`);
-            ratingsMap[store.id] = await r.json();
-          } catch { }
-        }));
-        setRatings(ratingsMap);
-        setLoading(false);
-      }).catch(() => setLoading(false));
-  }, []);
+    if (stores.length === 0) return;
+    const ratingsMap = {};
+    Promise.all(stores.map(async store => {
+      try {
+        const r = await fetch(`/api/stores/${store.id}/rating`);
+        ratingsMap[store.id] = await r.json();
+      } catch { }
+    })).then(() => setRatings({ ...ratingsMap }));
+  }, [stores.length]);
 
   const cities = [...new Set(stores.map(s => s.city).filter(Boolean))];
 
